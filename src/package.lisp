@@ -1,0 +1,625 @@
+;;;; src/package.lisp
+;;;;
+;;;; The single public package. Layers build on each other in the order they
+;;;; are listed below (and loaded, per cl-date-kit.asd's :serial t): DURATION
+;;;; and PERIOD are the two delta types; LOCAL-DATE, LOCAL-TIME, and
+;;;; LOCAL-DATE-TIME are timezone-unaware "naive" values; INSTANT is an
+;;;; absolute point on the UTC timeline; CLOCK abstracts where "now" comes
+;;;; from; TZIF and ZONE add IANA time zone rules; ZONED-DATE-TIME combines a
+;;;; naive local date-time with a resolved zone offset; OFFSET-DATE-TIME uses
+;;;; a fixed offset; ISO8601 formats and parses all of the above.
+(defpackage #:cl-date-kit
+  (:use #:cl)
+  (:export
+   ;; Duration (exact elapsed time)
+   #:duration
+   #:duration-p
+   #:duration-seconds
+   #:duration-nanos
+   #:duration-of-nanos
+   #:duration-of-seconds
+   #:duration-of-millis
+   #:duration-of-micros
+   #:duration-of-minutes
+   #:duration-of-hours
+   #:duration-of-days
+   #:duration-zero
+   #:duration-with-seconds
+   #:duration-with-nanos
+   #:duration-plus
+   #:duration-plus-nanos
+   #:duration-plus-micros
+   #:duration-plus-millis
+   #:duration-plus-seconds
+   #:duration-plus-minutes
+   #:duration-plus-hours
+   #:duration-plus-days
+   #:duration-minus
+   #:duration-minus-nanos
+   #:duration-minus-micros
+   #:duration-minus-millis
+   #:duration-minus-seconds
+   #:duration-minus-minutes
+   #:duration-minus-hours
+   #:duration-minus-days
+   #:duration-negate
+   #:duration-abs
+   #:duration-multiplied-by
+   #:duration-divided-by
+   #:duration-zero-p
+   #:duration-negative-p
+   #:duration-positive-p
+   #:duration-compare
+   #:duration=
+   #:duration<
+   #:duration<=
+   #:duration>
+   #:duration>=
+   #:duration-to-nanos
+   #:duration-to-millis
+   #:duration-to-micros
+   #:duration-to-minutes
+   #:duration-to-hours
+   #:duration-to-days
+   #:duration-to-seconds
+   #:duration-to-days-part
+   #:duration-to-hours-part
+   #:duration-to-minutes-part
+   #:duration-to-seconds-part
+   #:duration-to-millis-part
+   #:duration-to-micros-part
+   #:duration-to-nanos-part
+   #:duration-truncated-to
+   #:duration-between
+
+   ;; Period (calendar-based year/month/day delta)
+   #:period
+   #:period-p
+   #:period-years
+   #:period-months
+   #:period-days
+   #:make-period
+   #:period-of-years
+   #:period-of-months
+   #:period-of-days
+   #:period-of
+   #:period-with-years
+   #:period-with-months
+   #:period-with-days
+   #:period-between
+   #:period-plus
+   #:period-plus-years
+   #:period-plus-months
+   #:period-plus-days
+   #:period-minus
+   #:period-minus-years
+   #:period-minus-months
+   #:period-minus-days
+   #:period-negate
+   #:period-multiplied-by
+   #:period-abs
+   #:period-to-total-months
+   #:period-zero-p
+   #:period-negative-p
+   #:period=
+   #:period-normalized
+
+   ;; LocalDate (proleptic Gregorian calendar date, no time-of-day or zone)
+   #:local-date
+   #:local-date-p
+   #:local-date-year
+   #:local-date-month
+   #:local-date-day
+   #:make-local-date
+   #:local-date-of-year-day
+   #:local-date-of-week-date
+   #:local-date-at-time
+   #:local-date-at-start-of-day
+   #:local-date-of-instant
+   #:leap-year-p
+   #:length-of-month
+   #:local-date-leap-year-p
+   #:local-date-length-of-month
+   #:local-date-length-of-year
+   #:day-of-week
+   #:day-of-year
+   #:local-date-week-based-year
+   #:local-date-week-of-week-based-year
+   #:local-date-plus-days
+   #:local-date-plus-weeks
+   #:local-date-plus-months
+   #:local-date-plus-years
+   #:local-date-minus-days
+   #:local-date-minus-weeks
+   #:local-date-minus-months
+   #:local-date-minus-years
+   #:local-date-plus-period
+   #:local-date-minus-period
+   #:local-date-until
+   #:local-date-compare
+   #:local-date=
+   #:local-date<
+   #:local-date<=
+   #:local-date>
+   #:local-date>=
+   #:local-date-to-epoch-day
+   #:local-date-from-epoch-day
+   #:local-date-with-year
+   #:local-date-with-month
+   #:local-date-with-day
+   #:local-date-with-day-of-year
+   #:local-date-first-day-of-month
+   #:local-date-last-day-of-month
+   #:local-date-first-day-of-year
+   #:local-date-last-day-of-year
+   #:local-date-next-or-same
+   #:local-date-next
+   #:local-date-previous-or-same
+   #:local-date-previous
+
+   ;; YearMonth (proleptic Gregorian year and month, no day or zone)
+   #:year-month
+   #:year-month-p
+   #:year-month-year
+   #:year-month-month
+   #:make-year-month
+   #:year-month-of
+   #:year-month-from-local-date
+   #:year-month-now
+   #:year-month-to-proleptic-month
+   #:year-month-from-proleptic-month
+   #:year-month-length-of-month
+   #:year-month-leap-year-p
+   #:year-month-length-of-year
+   #:year-month-valid-day-p
+   #:year-month-at-day
+   #:year-month-at-end-of-month
+   #:year-month-plus-months
+   #:year-month-minus-months
+   #:year-month-plus-years
+   #:year-month-minus-years
+   #:year-month-until
+   #:year-month-compare
+   #:year-month=
+   #:year-month<
+   #:year-month<=
+   #:year-month>
+   #:year-month>=
+   #:year-month-with-year
+   #:year-month-with-month
+
+   ;; MonthDay (month and day, no year or zone)
+   #:month-day
+   #:month-day-p
+   #:month-day-month
+   #:month-day-day
+   #:make-month-day
+   #:month-day-of
+   #:month-day-from-local-date
+   #:month-day-now
+   #:month-day-valid-year-p
+   #:month-day-at-year
+   #:month-day-compare
+   #:month-day=
+   #:month-day<
+   #:month-day<=
+   #:month-day>
+   #:month-day>=
+   #:month-day-with-month
+   #:month-day-with-day
+
+   ;; Year (proleptic Gregorian year, no month, day, time, or zone)
+   #:year
+   #:year-p
+   #:year-value
+   #:make-year
+   #:year-of
+   #:year-from-local-date
+   #:year-now
+   #:year-from-year-month
+   #:year-leap-p
+   #:year-length
+   #:year-valid-month-day-p
+   #:year-at-month
+   #:year-at-month-day
+   #:year-at-day
+   #:year-plus-years
+   #:year-minus-years
+   #:year-until
+   #:year-compare
+   #:year=
+   #:year<
+   #:year<=
+   #:year>
+   #:year>=
+
+   ;; LocalTime (wall-clock time of day, no date or zone)
+   #:local-time
+   #:local-time-p
+   #:local-time-hour
+   #:local-time-minute
+   #:local-time-second
+   #:local-time-nanosecond
+   #:make-local-time
+   #:local-time-of-second-of-day
+   #:local-time-of-nano-of-day
+   #:local-time-midnight
+   #:local-time-noon
+   #:local-time-at-date #:local-time-of-instant #:local-time-now
+   #:local-time-plus-hours
+   #:local-time-plus-minutes
+   #:local-time-plus-seconds
+   #:local-time-plus-millis
+   #:local-time-plus-micros
+   #:local-time-plus-nanos
+   #:local-time-minus-hours
+   #:local-time-minus-minutes
+   #:local-time-minus-seconds
+   #:local-time-minus-millis
+   #:local-time-minus-micros
+   #:local-time-minus-nanos #:local-time-until
+   #:local-time-to-second-of-day
+   #:local-time-to-nano-of-day
+   #:local-time-compare
+   #:local-time=
+   #:local-time<
+   #:local-time<=
+   #:local-time>
+   #:local-time>=
+   #:local-time-with-hour
+   #:local-time-with-minute
+   #:local-time-with-second
+   #:local-time-with-nanosecond
+   #:local-time-truncated-to
+
+   ;; LocalDateTime (LocalDate + LocalTime, no zone)
+   #:local-date-time
+   #:local-date-time-p
+   #:local-date-time-date
+   #:local-date-time-time
+   #:make-local-date-time
+   #:local-date-time-of
+   #:local-date-time-to-epoch-second
+   #:local-date-time-of-epoch-second
+   #:local-date-time-to-instant
+   #:local-date-time-of-instant
+   #:local-date-time-year
+   #:local-date-time-month
+   #:local-date-time-day
+   #:local-date-time-hour
+   #:local-date-time-minute
+   #:local-date-time-second
+   #:local-date-time-nanosecond
+   #:local-date-time-plus-days
+   #:local-date-time-plus-weeks
+   #:local-date-time-plus-months
+   #:local-date-time-plus-years
+   #:local-date-time-plus-hours
+   #:local-date-time-plus-minutes
+   #:local-date-time-plus-seconds
+   #:local-date-time-plus-millis
+   #:local-date-time-plus-micros
+   #:local-date-time-plus-nanos
+   #:local-date-time-minus-days
+   #:local-date-time-minus-weeks
+   #:local-date-time-minus-months
+   #:local-date-time-minus-years
+   #:local-date-time-minus-hours
+   #:local-date-time-minus-minutes
+   #:local-date-time-minus-seconds
+   #:local-date-time-minus-millis
+   #:local-date-time-minus-micros
+   #:local-date-time-minus-nanos
+   #:local-date-time-plus-duration
+   #:local-date-time-minus-duration
+   #:local-date-time-plus-period
+   #:local-date-time-minus-period #:local-date-time-until
+   #:local-date-time-compare
+   #:local-date-time=
+   #:local-date-time<
+   #:local-date-time<=
+   #:local-date-time>
+   #:local-date-time>=
+   #:local-date-time-with-year
+   #:local-date-time-with-month
+   #:local-date-time-with-day
+   #:local-date-time-with-day-of-year
+   #:local-date-time-with-hour
+   #:local-date-time-with-minute
+   #:local-date-time-with-second
+   #:local-date-time-with-nanosecond
+   #:local-date-time-truncated-to
+
+   ;; Instant (absolute point on the UTC timeline, epoch seconds + nanos)
+   #:instant
+   #:instant-p
+   #:instant-epoch-second
+   #:instant-nanosecond
+   #:make-instant
+   #:instant-epoch
+   #:instant-of-epoch-nanos
+   #:instant-of-epoch-millis
+   #:instant-of-epoch-micros
+   #:instant-to-epoch-nanos
+   #:instant-to-epoch-millis
+   #:instant-to-epoch-micros
+   #:instant-plus-nanos #:instant-plus-micros #:instant-plus-millis
+   #:instant-plus-seconds #:instant-plus-minutes #:instant-plus-hours
+   #:instant-plus-days #:instant-plus-duration
+   #:instant-minus-nanos #:instant-minus-micros #:instant-minus-millis
+   #:instant-minus-seconds #:instant-minus-minutes #:instant-minus-hours
+   #:instant-minus-days #:instant-minus-duration #:instant-until
+   #:instant-truncated-to
+   #:instant-compare
+   #:instant=
+   #:instant<
+   #:instant<=
+   #:instant>
+   #:instant>=
+
+   ;; Clock (a boundary protocol for where "now" comes from)
+   #:clock-now
+   #:make-system-clock
+   #:system-clock-p
+   #:make-fixed-clock
+   #:fixed-clock-p
+   #:fixed-clock-instant
+   #:instant-now
+   #:make-offset-clock
+   #:offset-clock-p
+   #:offset-clock-base-clock
+   #:offset-clock-offset
+   #:make-tick-clock
+   #:tick-clock-p
+   #:tick-clock-base-clock
+   #:tick-clock-duration
+
+   ;; Zone (fixed offsets and IANA time zones backed by the TZif database)
+   #:zone-offset
+   #:zone-offset-p
+   #:zone-offset-total-seconds
+   #:zone-offset-of-hours
+   #:zone-offset-of-hms
+   #:zone-offset-of-total-seconds
+   #:zone-offset-compare
+   #:zone-offset=
+   #:zone-offset<
+   #:zone-offset<=
+   #:zone-offset>
+   #:zone-offset>=
+   #:zone-offset-utc
+   #:format-zone-offset
+   #:parse-zone-offset
+   #:time-zone
+   #:time-zone-p
+   #:time-zone-name
+   #:find-time-zone
+   #:offset-for-instant
+   #:zone-transition
+   #:zone-transition-p
+   #:zone-transition-instant
+   #:zone-transition-offset-before
+   #:zone-transition-offset-after
+   #:zone-transition-gap-p
+   #:zone-transition-overlap-p
+   #:next-zone-transition
+   #:previous-zone-transition
+   #:possible-offsets-for-local-date-time
+   #:resolve-local-date-time
+
+   ;; ZonedDateTime (LocalDateTime + TimeZone, resolved to a concrete offset)
+   #:zoned-date-time
+   #:zoned-date-time-p
+   #:zoned-date-time-local
+   #:zoned-date-time-zone
+   #:zoned-date-time-offset
+   #:zoned-date-time-of-local
+   #:zoned-date-time-of-instant
+   #:zoned-date-time-to-instant
+   #:zoned-date-time-date
+   #:zoned-date-time-time
+   #:zoned-date-time-year
+   #:zoned-date-time-month
+   #:zoned-date-time-day
+   #:zoned-date-time-hour
+   #:zoned-date-time-minute
+   #:zoned-date-time-second
+   #:zoned-date-time-nanosecond
+   #:zoned-date-time-with-zone-same-instant
+   #:zoned-date-time-with-zone-same-local
+   #:zoned-date-time-with-year
+   #:zoned-date-time-with-month
+   #:zoned-date-time-with-day
+   #:zoned-date-time-with-day-of-year
+   #:zoned-date-time-with-hour
+   #:zoned-date-time-with-minute
+   #:zoned-date-time-with-second
+   #:zoned-date-time-with-nanosecond   #:zoned-date-time-plus-days #:zoned-date-time-minus-days #:zoned-date-time-plus-weeks #:zoned-date-time-minus-weeks #:zoned-date-time-plus-months #:zoned-date-time-minus-months #:zoned-date-time-plus-years #:zoned-date-time-minus-years #:zoned-date-time-plus-hours
+   #:zoned-date-time-plus-minutes
+   #:zoned-date-time-plus-seconds
+   #:zoned-date-time-plus-millis
+   #:zoned-date-time-plus-micros
+   #:zoned-date-time-plus-nanos
+   #:zoned-date-time-minus-hours
+   #:zoned-date-time-minus-minutes
+   #:zoned-date-time-minus-seconds
+   #:zoned-date-time-minus-millis
+   #:zoned-date-time-minus-micros
+   #:zoned-date-time-minus-nanos
+   #:zoned-date-time-plus-duration
+   #:zoned-date-time-minus-duration
+   #:zoned-date-time-plus-period
+   #:zoned-date-time-minus-period #:zoned-date-time-truncated-to
+   #:zoned-date-time-until
+   #:zoned-date-time-compare
+   #:zoned-date-time=
+   #:zoned-date-time<
+   #:zoned-date-time<=
+   #:zoned-date-time>
+   #:zoned-date-time>=
+   #:local-date-now
+   #:local-date-time-now
+   #:zoned-date-time-now
+
+   ;; OffsetDateTime (LocalDateTime + fixed ZoneOffset)
+   #:offset-date-time
+   #:offset-date-time-p
+   #:offset-date-time-local-date-time
+   #:offset-date-time-offset
+   #:make-offset-date-time
+   #:offset-date-time-of
+   #:offset-date-time-of-instant
+   #:offset-date-time-to-instant
+   #:offset-date-time-date
+   #:offset-date-time-time
+   #:offset-date-time-year
+   #:offset-date-time-month
+   #:offset-date-time-day
+   #:offset-date-time-hour
+   #:offset-date-time-minute
+   #:offset-date-time-second
+   #:offset-date-time-nanosecond
+   #:offset-date-time-with-year
+   #:offset-date-time-with-month
+   #:offset-date-time-with-day
+   #:offset-date-time-with-day-of-year
+   #:offset-date-time-with-hour
+   #:offset-date-time-with-minute
+   #:offset-date-time-with-second
+   #:offset-date-time-with-nanosecond
+   #:offset-date-time-with-offset-same-instant
+   #:offset-date-time-with-offset-same-local
+   #:offset-date-time-plus-years
+   #:offset-date-time-plus-months
+   #:offset-date-time-plus-weeks
+   #:offset-date-time-plus-days
+   #:offset-date-time-minus-years
+   #:offset-date-time-minus-months
+   #:offset-date-time-minus-weeks
+   #:offset-date-time-minus-days
+   #:offset-date-time-plus-hours #:offset-date-time-plus-minutes #:offset-date-time-plus-seconds #:offset-date-time-plus-millis #:offset-date-time-plus-micros #:offset-date-time-plus-nanos #:offset-date-time-minus-hours #:offset-date-time-minus-minutes #:offset-date-time-minus-seconds #:offset-date-time-minus-millis #:offset-date-time-minus-micros #:offset-date-time-minus-nanos #:offset-date-time-plus-duration
+   #:offset-date-time-minus-duration
+   #:offset-date-time-plus-period
+   #:offset-date-time-minus-period #:offset-date-time-truncated-to
+   #:offset-date-time-until
+   #:offset-date-time-compare
+   #:offset-date-time=
+   #:offset-date-time<
+   #:offset-date-time<=
+   #:offset-date-time>
+   #:offset-date-time>=
+   #:offset-date-time-now
+
+   ;; OffsetTime (LocalTime + fixed ZoneOffset)
+   #:offset-time
+   #:offset-time-p
+   #:offset-time-local-time
+   #:offset-time-offset
+   #:make-offset-time
+   #:offset-time-of
+   #:offset-time-of-instant
+   #:offset-time-at-date
+   #:offset-time-time
+   #:offset-time-hour
+   #:offset-time-minute
+   #:offset-time-second
+   #:offset-time-nanosecond
+   #:offset-time-with-hour
+   #:offset-time-with-minute
+   #:offset-time-with-second
+   #:offset-time-with-nanosecond
+   #:offset-time-with-offset-same-instant
+   #:offset-time-with-offset-same-local
+   #:offset-time-plus-hours #:offset-time-plus-minutes #:offset-time-plus-seconds #:offset-time-plus-millis #:offset-time-plus-micros #:offset-time-plus-nanos #:offset-time-minus-hours #:offset-time-minus-minutes #:offset-time-minus-seconds #:offset-time-minus-millis #:offset-time-minus-micros #:offset-time-minus-nanos #:offset-time-plus-duration
+   #:offset-time-minus-duration #:offset-time-truncated-to
+   #:offset-time-until
+   #:offset-time-compare
+   #:offset-time=
+   #:offset-time<
+   #:offset-time<=
+   #:offset-time>
+   #:offset-time>=
+   #:offset-time-now
+
+   ;; ISO-8601 / RFC 3339 formatting and parsing
+   #:format-local-date
+   #:parse-local-date
+   #:format-year-month
+   #:parse-year-month
+   #:format-month-day
+   #:parse-month-day
+   #:format-year
+   #:parse-year
+   #:format-local-date-ordinal
+   #:parse-local-date-ordinal
+   #:format-local-date-week-date
+   #:parse-local-date-week-date
+   #:format-local-time
+   #:parse-local-time
+   #:format-local-date-time
+   #:parse-local-date-time
+   #:format-instant
+   #:parse-instant
+   #:format-zoned-date-time
+   #:parse-zoned-date-time
+   #:format-offset-date-time
+   #:parse-offset-date-time
+   #:format-offset-time
+   #:parse-offset-time
+   #:format-duration
+   #:parse-duration
+   #:format-period
+   #:parse-period
+
+   ;; Pattern formatting (compiled, locale-independent field patterns)
+   #:date-time-formatter
+   #:date-time-formatter-p
+   #:date-time-formatter-pattern
+   #:make-date-time-formatter
+   #:format-date-time
+   #:format-date-time-with-pattern #:parse-date-time #:parse-date-time-with-pattern
+
+   ;; Conditions
+   #:cl-date-kit-error
+   #:invalid-date
+   #:invalid-date-year
+   #:invalid-date-month
+   #:invalid-date-day
+   #:invalid-year-month
+   #:invalid-year-month-year
+   #:invalid-year-month-month
+   #:invalid-year
+   #:invalid-year-value
+   #:invalid-month-day
+   #:invalid-month-day-month
+   #:invalid-month-day-day
+   #:invalid-time
+   #:invalid-time-hour
+   #:invalid-time-minute
+   #:invalid-time-second
+   #:invalid-time-nanosecond
+   #:date-time-parse-error
+   #:date-time-parse-error-string
+   #:date-time-parse-error-expected
+   #:date-time-format-error
+   #:date-time-format-error-pattern
+   #:date-time-format-error-reason
+   #:time-zone-not-found
+   #:time-zone-not-found-name
+   #:malformed-tzif
+   #:malformed-tzif-path
+   #:malformed-tzif-reason
+   #:nonexistent-local-time
+   #:nonexistent-local-time-local-date-time
+   #:nonexistent-local-time-zone
+   #:ambiguous-local-time
+   #:ambiguous-local-time-local-date-time
+   #:ambiguous-local-time-zone
+   #:ambiguous-local-time-earlier-offset
+   #:ambiguous-local-time-later-offset
+   #:invalid-zone-offset
+   #:invalid-zone-offset-hours
+   #:invalid-zone-offset-minutes
+   #:invalid-zone-offset-seconds #:interval #:interval-p #:interval-start #:interval-end #:make-interval #:interval-empty-p #:interval-duration #:interval-contains-p #:interval-encloses-p #:interval-overlaps-p #:interval-abuts-p #:interval-connected-p #:interval-before-p #:interval-after-p #:interval-intersection #:interval-span #:interval-union #:interval-gap #:interval-with-start #:interval-with-end #:interval-difference #:invalid-interval #:invalid-interval-start #:invalid-interval-end #:local-date-time-at-zone #:local-date-time-at-offset #:offset-date-time-of-epoch-second #:offset-date-time-to-epoch-second #:zoned-date-time-of-epoch-second #:zoned-date-time-to-epoch-second #:instant-of-epoch-second #:local-date-of #:local-time-of #:invalid-day-of-week #:invalid-day-of-week-value #:day-of-week-value #:day-of-week-from-value #:day-of-week-length #:day-of-week-plus #:day-of-week-minus #:invalid-month #:invalid-month-value #:month-value #:month-from-value #:month-length #:month-min-length #:month-max-length #:month-first-day-of-year #:month-quarter-of-year #:month-first-month-of-quarter #:month-plus #:month-minus #:month-from-local-date #:local-date-at-start-of-day-in-zone))
+
+(in-package #:cl-date-kit)
