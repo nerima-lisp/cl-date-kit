@@ -171,13 +171,20 @@
 (describe
   "ordering compares by absolute instant"
   (it
-    "two ZONED-DATE-TIMEs naming the same instant in different zones compare equal"
-    (let* ((ny (find-time-zone "America/New_York"))
-           (tokyo (find-time-zone "Asia/Tokyo"))
-           (zdt (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) ny)))
-      (expect
-       (zoned-date-time= zdt (zoned-date-time-with-zone-same-instant zdt tokyo))
-       :to-be-truthy)))
+  "orders absolute instants across zones and DST overlaps"
+  (let* ((ny (find-time-zone "America/New_York"))
+         (tokyo (find-time-zone "Asia/Tokyo"))
+         (zdt (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) ny)))
+    (expect
+     (zoned-date-time= zdt (zoned-date-time-with-zone-same-instant zdt tokyo))
+     :to-be-truthy))
+  (let* ((zone (find-time-zone "America/New_York"))
+         (local (local-date-time-of 2024 11 3 1 30 0))
+         (earlier (zoned-date-time-of-local local zone :disambiguation :earlier))
+         (later (zoned-date-time-of-local local zone :disambiguation :later)))
+    (expect (zoned-date-time> later earlier) :to-be-truthy)
+    (expect (zoned-date-time<= later earlier) :to-be-falsy)
+    (expect (zoned-date-time>= earlier later) :to-be-falsy)))
   (it
     "ZONED-DATE-TIME-UNTIL follows elapsed time across a DST transition"
     (let* ((new-york (find-time-zone "America/New_York"))

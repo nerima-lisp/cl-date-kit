@@ -39,21 +39,28 @@
       (expect (cl-date-kit:offset-date-time= round-trip original) :to-be-truthy)
       (expect (cl-date-kit:offset-date-time-nanosecond round-trip) :to-be 123456789)))
   (it
-    "distinguishes same-instant and same-local offset changes"
-    (let* ((original
+  "distinguishes same-instant and same-local offset changes"
+  (let* ((original
           (cl-date-kit:offset-date-time-of 2024 6 15 12 0 0 0 (zone-offset-of-hours 9)))
-           (same-instant
+         (same-instant
           (cl-date-kit:offset-date-time-with-offset-same-instant
-            original
-            (zone-offset-of-hours 0)))
-           (same-local
+           original
+           (zone-offset-of-hours 0)))
+         (same-local
           (cl-date-kit:offset-date-time-with-offset-same-local
-            original
-            (zone-offset-of-hours 0))))
-      (expect (cl-date-kit:offset-date-time-hour same-instant) :to-be 3)
-      (expect (cl-date-kit:offset-date-time-hour same-local) :to-be 12)
-      (expect (cl-date-kit:offset-date-time= original same-instant) :to-be-truthy)
-      (expect (cl-date-kit:offset-date-time< original same-local) :to-be-truthy)))
+           original
+           (zone-offset-of-hours 0))))
+    (expect (cl-date-kit:offset-date-time-hour same-instant) :to-be 3)
+    (expect (cl-date-kit:offset-date-time-hour same-local) :to-be 12)
+    (expect (cl-date-kit:offset-date-time= original same-instant) :to-be-truthy)
+    (expect (cl-date-kit:offset-date-time< original same-local) :to-be-truthy))
+  (let ((later (cl-date-kit:offset-date-time-of
+                2024 1 2 0 30 0 0 (zone-offset-of-hours 1)))
+        (earlier (cl-date-kit:offset-date-time-of
+                  2024 1 1 23 29 59 0 (zone-offset-utc))))
+    (expect (cl-date-kit:offset-date-time-compare later earlier) :to-be 1)
+    (expect (cl-date-kit:offset-date-time<= later earlier) :to-be-falsy)
+    (expect (cl-date-kit:offset-date-time>= earlier later) :to-be-falsy)))
   (it
     "uses elapsed-time and calendar arithmetic appropriately"
     (let* ((original
