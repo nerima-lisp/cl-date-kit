@@ -237,14 +237,15 @@ environment variable, then /usr/share/zoneinfo, parsing its TZif file."
     (let* ((times (tzif-data-transition-times (time-zone-tzif-data zone)))
            (count (length times)))
       (or (zerop count) (> epoch-second (aref times (1- count))))))
-  (defun %select-posix-zone-transition (zone instant direction)
-    "Selects the nearest footer-rule transition in DIRECTION from INSTANT."
+  (defun %map-candidate-posix-zone-transitions (zone instant direction visitor)
+    "Calls VISITOR with each footer-rule ZONE-TRANSITION on the applicable side
+of DIRECTION from INSTANT, across the year before, of, and after INSTANT.
+Does not select among them -- see %SELECT-POSIX-ZONE-TRANSITION."
     (let ((rule (time-zone-posix-rule zone)))
       (when rule
         (let* ((epoch-second (instant-epoch-second instant))
                (nanosecond (instant-nanosecond instant))
-               (year (local-date-year (local-date-from-epoch-day (floor epoch-second 86400))))
-               (candidate nil))
+               (year (local-date-year (local-date-from-epoch-day (floor epoch-second 86400)))))
           (loop for transition-year from (1- year) to (1+ year)
                 do (dolist (description (%posix-transitions-for-year transition-year rule))
               (destructuring-bind (boundary before after) description
@@ -257,16 +258,31 @@ environment variable, then /usr/share/zoneinfo, parsing its TZif file."
                           (< boundary epoch-second)
                           (and (= boundary epoch-second) (plusp nanosecond))))))
                   (let ((transition (%zone-transition-from-values boundary before after)))
-                    (when (and
-                        transition
-                        (or
-                          (null candidate)
-                          (ecase direction
-                            (:next (< boundary (instant-epoch-second (zone-transition-instant candidate))))
-                            (:previous
-                              (> boundary (instant-epoch-second (zone-transition-instant candidate)))))))
-                      (setf candidate transition)))))))
-          candidate))))
+                    (when transition
+                      (funcall visitor transition)))))))))))
+  (defun %select-posix-zone-transition (zone instant direction)
+    "Selects the nearest footer-rule transition in DIRECTION from INSTANT."
+    (let ((candidate nil)
+          (closer-p
+          (ecase direction
+            (:next
+              (lambda (a b)
+                (<
+                  (instant-epoch-second (zone-transition-instant a))
+                  (instant-epoch-second (zone-transition-instant b)))))
+            (:previous
+              (lambda (a b)
+                (>
+                  (instant-epoch-second (zone-transition-instant a))
+                  (instant-epoch-second (zone-transition-instant b))))))))
+      (%map-candidate-posix-zone-transitions
+        zone
+        instant
+        direction
+        (lambda (transition)
+          (when (or (null candidate) (funcall closer-p transition candidate))
+            (setf candidate transition))))
+      candidate))
   (defun zone-transition-gap-p (transition)
     "True when TRANSITION moves the local clock forward."
     (>
