@@ -31,10 +31,13 @@
         :to-be
         45)))
   (it
-    "orders equivalent UTC times by local time to remain total"
+    "orders equivalent UTC times by local time with strict boundary predicates"
     (let ((plus-one (offset-time-of 12 0 0 0 (zone-offset-of-hours 1)))
           (utc (offset-time-of 11 0 0 0 (zone-offset-utc))))
+      (expect (offset-time-compare plus-one utc) :to-be 1)
       (expect (offset-time> plus-one utc) :to-be-truthy)
+      (expect (offset-time<= plus-one utc) :to-be-falsy)
+      (expect (offset-time>= utc plus-one) :to-be-falsy)
       (expect (offset-time= plus-one utc) :to-be-falsy)))
   (it
     "uses the supplied clock for NOW"
