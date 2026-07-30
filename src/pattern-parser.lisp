@@ -24,6 +24,29 @@
         (error 'date-time-parse-error :string string :expected expected))
       (values (parse-integer string :start position :end end) end))))
 
+(defun %pattern-read-numeric-field (string position field width remaining pattern expected)
+  "Read a plain numeric pattern field (day-of-X, hour, minute, second, or a
+fractional-second/millisecond-of-day count) at POSITION. When WIDTH is 1 and
+another field immediately follows with no literal to bound a greedy digit
+run, the field must be exactly one digit. FIELD #\\S always reads exactly
+WIDTH digits, since fractional seconds have no narrower single-digit form;
+every other field reads a greedy run of digits (or exactly WIDTH of them
+when WIDTH > 1)."
+  (when (and
+      (= width 1)
+      remaining
+      (consp (first remaining))
+      (eq (first (first remaining)) :field))
+    (%pattern-parse-error string pattern))
+  (if (char= field #\S) (let ((end (+ position width)))
+      (values (%parse-fixed-integer string position end expected) end))
+    (%pattern-read-digits
+      string
+      position
+      (if (= width 1) nil
+        width)
+      expected)))
+
 (defun %pattern-read-year (string position width remaining expected)
   (if (and remaining (consp (first remaining)) (eq (first (first remaining)) :field)) (progn
       (when (or
@@ -105,21 +128,7 @@
     (local-date-day (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\D
@@ -132,21 +141,7 @@
     (day-of-year (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\Y
@@ -171,21 +166,7 @@
       (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\e
@@ -198,21 +179,7 @@
     (%iso-weekday-number (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\E
@@ -248,21 +215,7 @@
             hour))))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\h
@@ -279,21 +232,7 @@
             hour))))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\m
@@ -306,21 +245,7 @@
     (local-time-minute (%require-pattern-field time pattern field "a time"))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\s
@@ -333,21 +258,7 @@
     (local-time-second (%require-pattern-field time pattern field "a time"))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\S
@@ -362,21 +273,7 @@
       (expt 10 (- 9 width)))
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\X
@@ -414,21 +311,7 @@
       1000000)
     width)
   :read
-  (progn
-    (when (and
-        (= width 1)
-        remaining
-        (consp (first remaining))
-        (eq (first (first remaining)) :field))
-      (%pattern-parse-error string pattern))
-    (if (char= field #\S) (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end))
-      (%pattern-read-digits
-        string
-        position
-        (if (= width 1) nil
-          width)
-        expected))))
+  (%pattern-read-numeric-field string position field width remaining pattern expected))
 
 (define-pattern-field
   #\z

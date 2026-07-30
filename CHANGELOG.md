@@ -44,6 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `define-period-fixed-component-arithmetic`,
   `define-local-time-fixed-unit-arithmetic`, `define-local-date-inverse`)
   instead of hand-duplicated per-unit functions.
+- `pattern-parser.lisp`'s ten numeric pattern-field readers (`d`, `D`, `w`,
+  `e`, `H`, `h`, `m`, `s`, `S`, `A`) shared one identical 15-line `:read`
+  clause, copy-pasted into each `define-pattern-field` call; extracted into
+  a single `%pattern-read-numeric-field` helper.
+- `offset-date-time` and `offset-time`'s `-with-*`/`-plus-*` field
+  operations (15 and 10 functions respectively) each hand-duplicated the
+  same "delegate to the wrapped `local-date-time`/`local-time` operation,
+  rewrap with the unchanged offset" shape; both files now generate them
+  with a small `define-offset-date-time-delegate`/`define-offset-time-delegate`
+  macro instead.
 - The four independent hand-rolled ISO weekday-name<->number mappings
   (`local-date.lisp` x3, `rrule-date-selection.lisp` x1) were consolidated
   into table lookups against the existing canonical weekday-order tables.

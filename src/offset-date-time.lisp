@@ -14,6 +14,16 @@
   (check-type offset zone-offset)
   (%make-offset-date-time local-date-time offset))
 
+(defmacro define-offset-date-time-delegate (fn-name local-op (offset-date-time &rest args) docstring)
+  "Defines FN-NAME as (OFFSET-DATE-TIME . ARGS), applying LOCAL-OP to
+OFFSET-DATE-TIME's LOCAL-DATE-TIME and rewrapping the result with
+OFFSET-DATE-TIME's unchanged OFFSET."
+  `(defun ,fn-name (,offset-date-time ,@args)
+     ,docstring
+     (make-offset-date-time
+       (,local-op (offset-date-time-local-date-time ,offset-date-time) ,@args)
+       (offset-date-time-offset ,offset-date-time))))
+
 (defun local-date-time-at-offset (local-date-time offset)
   "Pairs LOCAL-DATE-TIME with the fixed ZONE-OFFSET."
   (make-offset-date-time local-date-time offset))
@@ -96,69 +106,31 @@
 (defun offset-date-time-nanosecond (offset-date-time)
   (local-date-time-nanosecond (offset-date-time-local-date-time offset-date-time)))
 
-(defun offset-date-time-with-year (offset-date-time year)
-  "Returns OFFSET-DATE-TIME with YEAR, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-year
-      (offset-date-time-local-date-time offset-date-time)
-      year)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-year local-date-time-with-year (offset-date-time year)
+  "Returns OFFSET-DATE-TIME with YEAR, retaining its fixed offset.")
 
-(defun offset-date-time-with-month (offset-date-time month)
-  "Returns OFFSET-DATE-TIME with MONTH, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-month
-      (offset-date-time-local-date-time offset-date-time)
-      month)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-month local-date-time-with-month (offset-date-time month)
+  "Returns OFFSET-DATE-TIME with MONTH, retaining its fixed offset.")
 
-(defun offset-date-time-with-day (offset-date-time day)
-  "Returns OFFSET-DATE-TIME with DAY, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-day
-      (offset-date-time-local-date-time offset-date-time)
-      day)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-day local-date-time-with-day (offset-date-time day)
+  "Returns OFFSET-DATE-TIME with DAY, retaining its fixed offset.")
 
-(defun offset-date-time-with-day-of-year (offset-date-time day-of-year)
-  "Returns OFFSET-DATE-TIME with DAY-OF-YEAR, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-day-of-year
-      (offset-date-time-local-date-time offset-date-time)
-      day-of-year)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-day-of-year local-date-time-with-day-of-year
+  (offset-date-time day-of-year)
+  "Returns OFFSET-DATE-TIME with DAY-OF-YEAR, retaining its fixed offset.")
 
-(defun offset-date-time-with-hour (offset-date-time hour)
-  "Returns OFFSET-DATE-TIME with HOUR, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-hour
-      (offset-date-time-local-date-time offset-date-time)
-      hour)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-hour local-date-time-with-hour (offset-date-time hour)
+  "Returns OFFSET-DATE-TIME with HOUR, retaining its fixed offset.")
 
-(defun offset-date-time-with-minute (offset-date-time minute)
-  "Returns OFFSET-DATE-TIME with MINUTE, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-minute
-      (offset-date-time-local-date-time offset-date-time)
-      minute)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-minute local-date-time-with-minute (offset-date-time minute)
+  "Returns OFFSET-DATE-TIME with MINUTE, retaining its fixed offset.")
 
-(defun offset-date-time-with-second (offset-date-time second)
-  "Returns OFFSET-DATE-TIME with SECOND, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-second
-      (offset-date-time-local-date-time offset-date-time)
-      second)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-second local-date-time-with-second (offset-date-time second)
+  "Returns OFFSET-DATE-TIME with SECOND, retaining its fixed offset.")
 
-(defun offset-date-time-with-nanosecond (offset-date-time nanosecond)
-  "Returns OFFSET-DATE-TIME with NANOSECOND, retaining its fixed offset."
-  (make-offset-date-time
-    (local-date-time-with-nanosecond
-      (offset-date-time-local-date-time offset-date-time)
-      nanosecond)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-with-nanosecond local-date-time-with-nanosecond
+  (offset-date-time nanosecond)
+  "Returns OFFSET-DATE-TIME with NANOSECOND, retaining its fixed offset.")
 
 (defun offset-date-time-with-offset-same-instant (offset-date-time offset)
   (offset-date-time-of-instant
@@ -170,53 +142,25 @@
     (offset-date-time-local-date-time offset-date-time)
     offset))
 
-(defun offset-date-time-plus-nanos (offset-date-time nanos)
-  "Return OFFSET-DATE-TIME advanced by signed NANOSECONDS."
-  (make-offset-date-time
-    (local-date-time-plus-nanos
-      (offset-date-time-local-date-time offset-date-time)
-      nanos)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-nanos local-date-time-plus-nanos (offset-date-time nanos)
+  "Return OFFSET-DATE-TIME advanced by signed NANOSECONDS.")
 
-(defun offset-date-time-plus-micros (offset-date-time micros)
-  "Return OFFSET-DATE-TIME advanced by signed MICROSECONDS."
-  (make-offset-date-time
-    (local-date-time-plus-micros
-      (offset-date-time-local-date-time offset-date-time)
-      micros)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-micros local-date-time-plus-micros (offset-date-time micros)
+  "Return OFFSET-DATE-TIME advanced by signed MICROSECONDS.")
 
-(defun offset-date-time-plus-millis (offset-date-time millis)
-  "Return OFFSET-DATE-TIME advanced by signed MILLISECONDS."
-  (make-offset-date-time
-    (local-date-time-plus-millis
-      (offset-date-time-local-date-time offset-date-time)
-      millis)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-millis local-date-time-plus-millis (offset-date-time millis)
+  "Return OFFSET-DATE-TIME advanced by signed MILLISECONDS.")
 
-(defun offset-date-time-plus-seconds (offset-date-time seconds)
-  "Return OFFSET-DATE-TIME advanced by signed SECONDS."
-  (make-offset-date-time
-    (local-date-time-plus-seconds
-      (offset-date-time-local-date-time offset-date-time)
-      seconds)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-seconds local-date-time-plus-seconds
+  (offset-date-time seconds)
+  "Return OFFSET-DATE-TIME advanced by signed SECONDS.")
 
-(defun offset-date-time-plus-minutes (offset-date-time minutes)
-  "Return OFFSET-DATE-TIME advanced by signed MINUTES."
-  (make-offset-date-time
-    (local-date-time-plus-minutes
-      (offset-date-time-local-date-time offset-date-time)
-      minutes)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-minutes local-date-time-plus-minutes
+  (offset-date-time minutes)
+  "Return OFFSET-DATE-TIME advanced by signed MINUTES.")
 
-(defun offset-date-time-plus-hours (offset-date-time hours)
-  "Return OFFSET-DATE-TIME advanced by signed HOURS."
-  (make-offset-date-time
-    (local-date-time-plus-hours
-      (offset-date-time-local-date-time offset-date-time)
-      hours)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-hours local-date-time-plus-hours (offset-date-time hours)
+  "Return OFFSET-DATE-TIME advanced by signed HOURS.")
 
 (defun offset-date-time-minus-nanos (offset-date-time nanos)
   "Return OFFSET-DATE-TIME moved backward by signed NANOSECONDS."
@@ -250,12 +194,8 @@
 (defun offset-date-time-minus-duration (offset-date-time duration)
   (offset-date-time-plus-duration offset-date-time (duration-negate duration)))
 
-(defun offset-date-time-plus-period (offset-date-time period)
-  (make-offset-date-time
-    (local-date-time-plus-period
-      (offset-date-time-local-date-time offset-date-time)
-      period)
-    (offset-date-time-offset offset-date-time)))
+(define-offset-date-time-delegate offset-date-time-plus-period local-date-time-plus-period (offset-date-time period)
+  "Return OFFSET-DATE-TIME advanced by signed PERIOD on its local calendar.")
 
 (progn
   (defun offset-date-time-plus-days (offset-date-time days)
