@@ -163,15 +163,9 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
 
 (defun day-of-week-value (day-of-week)
   "Returns the ISO-8601 value for DAY-OF-WEEK: Monday is 1 and Sunday is 7."
-  (case day-of-week
-    (:monday 1)
-    (:tuesday 2)
-    (:wednesday 3)
-    (:thursday 4)
-    (:friday 5)
-    (:saturday 6)
-    (:sunday 7)
-    (otherwise (error 'invalid-day-of-week :value day-of-week))))
+  (let ((position (position day-of-week *iso-day-of-week-names*)))
+    (if position (1+ position)
+      (error 'invalid-day-of-week :value day-of-week))))
 
 (defun day-of-week-from-value (value)
   "Returns the weekday keyword for ISO-8601 VALUE in the inclusive range 1 through 7."
@@ -199,14 +193,7 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
 
 (defun %iso-weekday-number (date)
   "Returns DATE's ISO weekday number, where Monday is 1 and Sunday is 7."
-  (ecase (day-of-week date)
-    (:monday 1)
-    (:tuesday 2)
-    (:wednesday 3)
-    (:thursday 4)
-    (:friday 5)
-    (:saturday 6)
-    (:sunday 7)))
+  (day-of-week-value (day-of-week date)))
 
 (defun %iso-week-1-monday (week-based-year)
   "Returns the Monday starting ISO week 1 of WEEK-BASED-YEAR."
@@ -381,23 +368,12 @@ This is the discoverable type-oriented spelling of LOCAL-DATE-UNTIL."
   "Returns December 31 in DATE's calendar year."
   (%make-local-date (local-date-year date) 12 31))
 
-(defun %iso-weekday-number-from-symbol (day-of-week)
-  "Returns DAY-OF-WEEK's ISO number, accepting :MONDAY through :SUNDAY."
-  (ecase day-of-week
-    (:monday 1)
-    (:tuesday 2)
-    (:wednesday 3)
-    (:thursday 4)
-    (:friday 5)
-    (:saturday 6)
-    (:sunday 7)))
-
 (defun local-date-next-or-same (date day-of-week)
   "Returns DATE or the next DATE whose weekday is DAY-OF-WEEK."
   (local-date-plus-days
     date
     (mod
-      (- (%iso-weekday-number-from-symbol day-of-week) (%iso-weekday-number date))
+      (- (day-of-week-value day-of-week) (%iso-weekday-number date))
       7)))
 
 (defun local-date-next (date day-of-week)
@@ -411,7 +387,7 @@ This is the discoverable type-oriented spelling of LOCAL-DATE-UNTIL."
   (local-date-minus-days
     date
     (mod
-      (- (%iso-weekday-number date) (%iso-weekday-number-from-symbol day-of-week))
+      (- (%iso-weekday-number date) (day-of-week-value day-of-week))
       7)))
 
 (progn
@@ -437,7 +413,7 @@ This is the discoverable type-oriented spelling of LOCAL-DATE-UNTIL."
 
 Positive ordinals count from the first matching weekday and negative ordinals
 count from the last; results may fall outside DATE month."
-    (%iso-weekday-number-from-symbol day-of-week)
+    (day-of-week-value day-of-week)
     (unless (and (integerp ordinal) (not (zerop ordinal)))
       (error
         (quote invalid-date)

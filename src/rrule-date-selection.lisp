@@ -1,14 +1,9 @@
 (in-package #:cl-date-kit)
 
 (defun %rrule-weekday-value (weekday)
-  (ecase weekday
-    (:mo 1)
-    (:tu 2)
-    (:we 3)
-    (:th 4)
-    (:fr 5)
-    (:sa 6)
-    (:su 7)))
+  "Returns WEEKDAY's RRULE ordinal, where :MO is 1 and :SU is 7, mirroring
++RRULE-WEEKDAYS+'s Monday-through-Sunday order."
+  (1+ (position weekday +rrule-weekdays+)))
 
 (defun %rrule-week-start (date week-start)
   (local-date-minus-days
