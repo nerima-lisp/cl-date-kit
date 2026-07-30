@@ -76,7 +76,8 @@ Tests live in `t/` and are organized by feature (`src/zone.lisp` ->
 `t/zone-test.lisp`). Low-level modules may be covered indirectly by their
 feature's integration tests. They run under
 [cl-weave](https://github.com/nerima-lisp/cl-weave), the org's test
-framework, using `describe`/`it`/`expect`/`signals`.
+framework, using `describe`/`it`/`expect`/`signals`, `it-each` for
+table-driven cases, and `it-property` for property-based round-trip checks.
 
 The time-zone tests (`t/zone-test.lisp`, `t/zoned-date-time-test.lisp`) read
 the real IANA time zone database rather than a fixture, so a passing test

@@ -68,7 +68,7 @@ exact integer amount, preserving the other components without normalizing months
 arithmetic. `PERIOD-TO-TOTAL-MONTHS` -- calendar-month conversion.
 `PERIOD-ZERO-P`, `PERIOD-NEGATIVE-P`, `PERIOD=` -- predicates.
 
-## LocalDate (`src/local-date.lisp`)
+## LocalDate (`src/local-date.lisp`, `src/local-date-arithmetic.lisp`, `src/local-date-week.lisp`)
 
 Proleptic-Gregorian calendar date, no time-of-day or zone.
 
@@ -368,14 +368,16 @@ UTC timeline to a strictly positive fixed `DURATION`; this also gives correct
 flooring before the epoch. Both derived clock types expose their base clock and
 their offset or tick duration through read-only accessors.
 
-## Zone (`src/zone.lisp`, `src/zone-local.lisp`)
+## Zone (`src/zone.lisp`, `src/zone-version.lisp`, `src/zone-local.lisp`)
 
 `src/zone.lisp` owns TZif-backed IANA zone discovery, fixed-offset values,
-instant-time state lookup, and transition enumeration. `src/zone-local.lisp`
-owns conversion between local fields and the UTC timeline plus local-time DST
-classification and resolution. This split keeps the one-way question "which
-offset applies at this instant?" separate from the ambiguous reverse question
-"which instant does this local clock reading mean?".
+instant-time state lookup, and transition enumeration. `src/zone-version.lisp`
+owns parsing the IANA tzdata release version from the zoneinfo tree.
+`src/zone-local.lisp` owns conversion between local fields and the UTC
+timeline plus local-time DST classification and resolution. This split keeps
+the one-way question "which offset applies at this instant?" separate from
+the ambiguous reverse question "which instant does this local clock reading
+mean?".
 
 `ZONE-OFFSET-OF-HOURS`, `ZONE-OFFSET-OF-HMS`, `ZONE-OFFSET-OF-TOTAL-SECONDS`,
 `ZONE-OFFSET-UTC` --
@@ -519,7 +521,7 @@ helpers with the same local-calendar and overlap-resolution semantics.
 convenience "now" accessors taking `:ZONE` and
 `:CLOCK` keywords.
 
-## RFC 5545 RRULE (`src/rrule.lisp`, `src/rrule-codec.lisp`, `src/rrule-date-selection.lisp`, `src/rrule-candidates.lisp`)
+## RFC 5545 RRULE (`src/rrule.lisp`, `src/rrule-codec.lisp`, `src/rrule-date-selection.lisp`, `src/rrule-candidates.lisp`, `src/rrule-occurrences.lisp`)
 
 `RRULE` is the immutable representation of an RFC 5545 recurrence rule.
 `MAKE-RRULE` constructs one from keyword arguments; `PARSE-RRULE` reads a
