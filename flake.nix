@@ -13,6 +13,14 @@
       flake = false;
     };
 
+    # The org-standard "crane for Common Lisp" -- builds ASDF systems, wires
+    # up run-tests.lisp-based checks/apps, and extracts .asd metadata, so
+    # this flake no longer hand-rolls any of that itself.
+    cl-nix-forge = {
+      url = "github:nerima-lisp/cl-nix-forge/v0.4.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,6 +32,7 @@
       self,
       nixpkgs,
       cl-weave,
+      cl-nix-forge,
       treefmt-nix,
       ...
     }:
@@ -35,33 +44,20 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
-      # CL_SOURCE_REGISTRY for environments that need cl-weave.  Callers pass
-      # its packaged output so ASDF can reuse its compiled FASLs rather than
-      # rebuilding the test framework for every isolated test run.
-      sourceRegistry = clWeave: "${clWeave}//:${self}//";
-
       # Keep the process-level deadlines consistent across checks and apps.
       testTimeoutSeconds = 120;
       # SB-COVER recompiles the whole project with instrumentation before tests.
       coverageTimeoutSeconds = 900;
       benchmarkTimeoutSeconds = 120;
-
-      # Single source of truth for the package version: the `:version` form
-      # in cl-date-kit.asd. Nix regexes are whole-string anchored and `.`
-      # never spans newlines, so the version is extracted from its containing
-      # line without imposing a particular ASDF formatting layout.
-      version =
-        let
-          lines = nixpkgs.lib.splitString "\n" (builtins.readFile ./cl-date-kit.asd);
-          versionLine = builtins.head (
-            builtins.filter (line: builtins.match ".*:version \"[^\"]*\".*" line != null) lines
-          );
-        in
-        builtins.head (builtins.match ".*:version \"([^\"]*)\".*" versionLine);
+      # Matches the `timeout --kill-after=10s` every check/app used before
+      # cl-nix-forge (whose own mkScriptCheck/mkTestApp default to 30s).
+      killAfterSeconds = 10;
 
       # treefmt drives `nix fmt` and the `checks.<system>.formatting` gate.
       # Scope is Nix only: YAML formatters mangle the GitHub Actions `on:` key
       # and Markdown reformatting would churn the whole docs tree.
+      # cl-nix-forge has no formatting story of its own, so this stays exactly
+      # as it was.
       treefmtEval = forAllSystems (
         system:
         treefmt-nix.lib.evalModule nixpkgs.legacyPackages.${system} {
@@ -75,44 +71,57 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          cl = cl-nix-forge.lib.${system};
+
+          # Single source of truth for the package version: the `:version`
+          # form in cl-date-kit.asd, read by cl-nix-forge's own .asd lexer
+          # instead of a hand-rolled Nix regex.
+          version = cl.fromAsdSystem ./cl-date-kit.asd;
+
+          # ALLOWLIST sources (.asd/.lisp only) rather than raw `self`/
+          # `cl-weave`, so a working tree with local .fasl/run-tests.lisp
+          # leftovers (coverage/, result, ...) cannot change the build's
+          # input hash. Both trees are git-ignored already (see
+          # .gitignore), so this is belt-and-suspenders on top of that.
+          #
+          # `lib.fileset` requires an actual `path`-typed value, but both
+          # `self` and a non-flake input like `cl-weave` evaluate to a
+          # string-like store path (at least whenever the working tree is
+          # dirty, which it is on a checkout with in-progress changes) --
+          # `/. + "${x}"` is the standard idiom to recover a real `path`
+          # from that string.
+          toPath = x: /. + builtins.unsafeDiscardStringContext "${x}";
+          cl-weave-src = cl.mkLispSource { root = toPath cl-weave; };
+          cl-date-kit-src = cl.mkLispSource { root = toPath self; };
         in
         rec {
-          cl-weave = pkgs.sbcl.buildASDFSystem {
-            pname = "cl-weave";
-          version = "1.1.0";
-            src = inputs.cl-weave;
-            systems = [ "cl-weave" ];
+          cl-weave = cl.lispDerivation {
+            lispSystem = "cl-weave";
+            src = cl-weave-src;
+            version = "1.1.0";
           };
 
-          cl-date-kit = pkgs.sbcl.buildASDFSystem {
-            pname = "cl-date-kit";
+          cl-date-kit = cl.lispDerivation {
+            lispSystem = "cl-date-kit";
+            src = cl-date-kit-src;
             inherit version;
-            src = self;
-            systems = [ "cl-date-kit" ];
+            # Only pulled into CL_SOURCE_REGISTRY when doCheck = true, i.e.
+            # via `.enableCheck` (see checks.default and devShells.default
+            # below) -- the plain package build stays dependency-free, same
+            # as `cl-date-kit.asd`'s own `:depends-on ()`.
+            lispCheckDependencies = [ cl-weave ];
           };
           default = cl-date-kit;
 
           # Rendered documentation site (Material for MkDocs). Built fully
           # offline: Material for MkDocs bundles all of its assets, so no
           # network access is required inside the Nix sandbox. --strict
-          # promotes broken links and unlisted pages to build failures.
-          docs = pkgs.stdenvNoCC.mkDerivation {
+          # (the default) promotes broken links and unlisted pages to build
+          # failures.
+          docs = cl.mkDocsSite {
+            root = ./docs;
             pname = "cl-date-kit-docs";
             inherit version;
-            src = pkgs.lib.fileset.toSource {
-              root = ./docs;
-              fileset = pkgs.lib.fileset.unions [
-                ./docs/mkdocs.yml
-                ./docs/src
-              ];
-            };
-            nativeBuildInputs = [ pkgs.python3Packages.mkdocs-material ];
-            buildPhase = ''
-              runHook preBuild
-              mkdocs build --strict --config-file mkdocs.yml --site-dir "$out"
-              runHook postBuild
-            '';
-            dontInstall = true;
             meta = {
               description = "Rendered MkDocs (Material) documentation for cl-date-kit";
               homepage = "https://github.com/nerima-lisp/cl-date-kit";
@@ -130,32 +139,36 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          clWeave = self.packages.${system}.cl-weave;
+          cl = cl-nix-forge.lib.${system};
+          clDateKit = self.packages.${system}.cl-date-kit;
+
+          # The time-zone tests read real IANA data through TZDIR rather
+          # than a bundled copy (see docs/src/compatibility.md), so the Nix
+          # sandbox needs its own zoneinfo tree: nixpkgs' `tzdata` package,
+          # not whatever the host happens to have at /usr/share/zoneinfo
+          # (which is not visible inside the sandbox anyway).
+          #
+          # cl-nix-forge's mkScriptCheck has no dedicated "extra env var"
+          # argument, so TZDIR is added with `overrideAttrs` after the
+          # check derivation is built. `env` is a real mkDerivation
+          # argument (exported for every phase, including checkPhase), so
+          # this reaches the SBCL process exactly like the hand-written
+          # `checks.default` used to.
+          tzdir = "${pkgs.tzdata}/share/zoneinfo";
         in
         {
           default =
-            pkgs.runCommand "cl-date-kit-tests"
-              {
-                nativeBuildInputs = [
-                  pkgs.sbcl
-                  pkgs.coreutils
-                  clWeave
-                ];
-                CL_SOURCE_REGISTRY = sourceRegistry clWeave;
-                # The time-zone tests read real IANA data through TZDIR
-                # rather than a bundled copy (see docs/src/compatibility.md),
-                # so the Nix sandbox needs its own zoneinfo tree: nixpkgs'
-                # `tzdata` package, not whatever the host happens to have at
-                # /usr/share/zoneinfo (which is not visible inside the
-                # sandbox anyway).
-                TZDIR = "${pkgs.tzdata}/share/zoneinfo";
-              }
-              ''
-                export HOME="$TMPDIR/home"
-                mkdir -p "$HOME" "$out"
-                timeout --kill-after=10s ${toString testTimeoutSeconds}s sbcl --script ${self}/run-tests.lisp
-                touch "$out/passed"
-              '';
+            (cl.mkScriptCheck {
+              drv = clDateKit;
+              entryPoint = "run-tests.lisp";
+              timeoutSeconds = testTimeoutSeconds;
+              inherit killAfterSeconds;
+            }).overrideAttrs
+              (old: {
+                env = (old.env or { }) // {
+                  TZDIR = tzdir;
+                };
+              });
 
           formatting = treefmtEval.${system}.config.build.check self;
 
@@ -171,8 +184,20 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          cl = cl-nix-forge.lib.${system};
           clWeave = self.packages.${system}.cl-weave;
           clDateKit = self.packages.${system}.cl-date-kit;
+          tzdir = "${pkgs.tzdata}/share/zoneinfo";
+
+          # CL_SOURCE_REGISTRY for the custom, cl-nix-forge-independent
+          # scripts below (coverage, benchmark): cl-weave's built fasls
+          # plus this repository's own source, as plain non-recursive
+          # `:directory` entries -- both trees have their .asd directly at
+          # their root, and cl-nix-forge's own internal `registryPathOf`
+          # (lib/core/asdf-derivation.nix, not part of its public API) does
+          # exactly this for its own lispDerivation results.
+          sourceRegistry = "${clWeave}:${self}";
+
           isolatedLispEnvironment = ''
             temporary_home="$(mktemp -d "$TMPDIR/cl-date-kit.XXXXXX")"
             trap 'rm -rf "$temporary_home"' EXIT
@@ -331,34 +356,58 @@
                                            yearly-rrule-schedule
                                            :max-periods 8))))))
           '';
+
+          # `nix run .#test`: cl-nix-forge's mkTestApp is the org-standard
+          # helper for this (it runs the repo's own run-tests.lisp in place,
+          # the same PACKAGE_STANDARD.md-mandated entry point mkScriptCheck
+          # drives above). It has no extra-environment-variable argument
+          # either, so it is wrapped in a thin writeShellApplication that
+          # only adds `export TZDIR=...` before exec-ing the app it builds --
+          # everything else (CL_SOURCE_REGISTRY, the isolated HOME,
+          # timeout -k) stays exactly what mkTestApp already does.
+          testApp = cl.mkTestApp {
+            pname = "cl-date-kit";
+            src = self;
+            lispDependencies = [ clWeave ];
+            timeoutSeconds = testTimeoutSeconds;
+            inherit killAfterSeconds;
+            description = "Run the cl-date-kit test suite";
+          };
           test = pkgs.writeShellApplication {
             name = "cl-date-kit-test";
-            runtimeInputs = [
-              pkgs.sbcl
-              pkgs.coreutils
-              clWeave
-            ];
             text = ''
-              export CL_SOURCE_REGISTRY="${sourceRegistry clWeave}"
-              export TZDIR="${pkgs.tzdata}/share/zoneinfo"
-              ${isolatedLispCache}
-              timeout --kill-after=10s ${toString testTimeoutSeconds}s sbcl --script ${self}/run-tests.lisp
+              export TZDIR="${tzdir}"
+              exec ${testApp.program} "$@"
             '';
           };
+
+          # No cl-nix-forge equivalent: mkCoverageReport (lib/batteries/
+          # coverage.nix) is derivation-shaped -- its report always lands at
+          # a fixed path under the check's own $out -- so it cannot support
+          # `nix run .#coverage -- <caller-chosen-directory>`, which is the
+          # documented, argv-driven contract `run-coverage.lisp` and this
+          # app already give. run-coverage.lisp's own report-vs-source
+          # filtering (`project-source-p`) also has no mkCoverageReport
+          # equivalent. Kept as the original hand-written script/app pair.
           coverage = pkgs.writeShellApplication {
             name = "cl-date-kit-coverage";
             runtimeInputs = [
               pkgs.sbcl
               pkgs.coreutils
-              clWeave
             ];
             text = ''
-              export CL_SOURCE_REGISTRY="${sourceRegistry clWeave}"
-              export TZDIR="${pkgs.tzdata}/share/zoneinfo"
+              export CL_SOURCE_REGISTRY="${sourceRegistry}"
+              export TZDIR="${tzdir}"
               ${isolatedLispCache}
-              timeout --kill-after=10s ${toString coverageTimeoutSeconds}s sbcl --script ${self}/run-coverage.lisp "$@"
+              timeout --kill-after=${toString killAfterSeconds}s ${toString coverageTimeoutSeconds}s sbcl --script ${self}/run-coverage.lisp "$@"
             '';
           };
+
+          # No cl-nix-forge equivalent: this is a bespoke inline benchmark
+          # script, not a test or coverage run. `lispScript` was considered,
+          # but it has no timeout wrapping and no hook for the
+          # CL_DATE_KIT_BENCHMARK_* environment variables this script reads,
+          # so a plain writeShellApplication stays the simpler fit.
           benchmark = pkgs.writeShellApplication {
             name = "cl-date-kit-benchmark";
             runtimeInputs = [
@@ -367,11 +416,11 @@
             ];
             text = ''
               # Keep source compilation out of the measured process.
-              export CL_SOURCE_REGISTRY="${clDateKit}//"
-              export TZDIR="${pkgs.tzdata}/share/zoneinfo"
+              export CL_SOURCE_REGISTRY="${clDateKit}"
+              export TZDIR="${tzdir}"
               ${isolatedLispEnvironment}
               printf '%s\n' 'Loading cl-date-kit benchmark...'
-              timeout --kill-after=10s ${toString benchmarkTimeoutSeconds}s sbcl --script ${benchmarkScript} "$@"
+              timeout --kill-after=${toString killAfterSeconds}s ${toString benchmarkTimeoutSeconds}s sbcl --script ${benchmarkScript} "$@"
             '';
           };
         in
@@ -403,18 +452,24 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          clWeave = self.packages.${system}.cl-weave;
+          cl = cl-nix-forge.lib.${system};
+          clDateKit = self.packages.${system}.cl-date-kit;
+          tzdir = "${pkgs.tzdata}/share/zoneinfo";
         in
         {
-          default = pkgs.mkShell {
-            packages = [
-              pkgs.sbcl
-              pkgs.coreutils
-              clWeave
-            ];
-            CL_SOURCE_REGISTRY = sourceRegistry clWeave;
-            TZDIR = "${pkgs.tzdata}/share/zoneinfo";
-          };
+          # `.enableCheck` (not the plain package) so cl-weave's
+          # lispCheckDependencies are on CL_SOURCE_REGISTRY too, matching
+          # the previous shell where cl-weave was always present.
+          default =
+            (cl.mkDevShell {
+              drv = clDateKit.enableCheck;
+              extraPackages = [ pkgs.coreutils ];
+            }).overrideAttrs
+              (old: {
+                env = (old.env or { }) // {
+                  TZDIR = tzdir;
+                };
+              });
         }
       );
     };
