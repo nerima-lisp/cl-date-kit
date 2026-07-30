@@ -490,11 +490,6 @@
    #:zone-transition-duration
    #:zone-transition-date-time-before
    #:zone-transition-date-time-after
-   #:time-zone-transition
-   #:time-zone-transition-instant
-   #:time-zone-transition-offset-before
-   #:time-zone-transition-offset-after
-   #:time-zone-transition-duration
    #:next-zone-transition
    #:time-zone-transitions-between
    #:previous-zone-transition
@@ -727,12 +722,11 @@
    #:date-time-locale
    #:date-time-locale-name
    #:date-time-locale-short-months
-   #:date-time-locale-long-months
-   #:date-time-locale-narrow-months
+   #:date-time-locale-months
    #:date-time-locale-short-weekdays
-   #:date-time-locale-long-weekdays
-   #:date-time-locale-narrow-weekdays
-   #:date-time-locale-meridiems
+   #:date-time-locale-weekdays
+   #:date-time-locale-am
+   #:date-time-locale-pm
    #:make-date-time-locale
    #:find-date-time-locale
 
