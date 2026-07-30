@@ -17,6 +17,8 @@
     (:file "duration")
     (:file "period")
     (:file "local-date")
+    (:file "local-date-arithmetic")
+    (:file "local-date-week")
     (:file "month")
     (:file "year-month")
     (:file "month-day")
