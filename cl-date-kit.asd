@@ -40,6 +40,7 @@
    (:file "rrule-codec")
    (:file "rrule-date-selection")
    (:file "rrule-candidates")
+   (:file "rrule-occurrences")
    (:file "rrule-set")
    (:file "offset-date-time")
     (:file "iso8601-date")

@@ -1,28 +1,11 @@
 ;;;; src/rrule-candidates.lisp
 ;;;;
-;;;; RFC 5545 recurrence expansion for DATE-TIME and DATE DTSTART values.
+;;;; RFC 5545 recurrence candidate generation: turning one frequency period's
+;;;; anchor into its ordered raw DATE or local DATE-TIME candidates, including
+;;;; BYSETPOS positional selection. RRULE-OCCURRENCES.LISP turns these
+;;;; candidates into a bounded occurrence stream; RRULE-DATE-SELECTION.LISP
+;;;; owns the BYxxx day-selector matching this file calls into.
 (in-package #:cl-date-kit)
-
-(defun %rrule-anchor-at (start rule period-index)
-  "Compute a period from DTSTART, rather than from the preceding period.
-This avoids calendar clamping drift for rules such as DTSTART=January 31."
-  (let ((amount (* period-index (rrule-interval rule))))
-    (ecase (rrule-frequency rule)
-      (:secondly (local-date-time-plus-seconds start amount))
-      (:minutely (local-date-time-plus-minutes start amount))
-      (:hourly (local-date-time-plus-hours start amount))
-      (:daily (local-date-time-plus-days start amount))
-      (:weekly (local-date-time-plus-weeks start amount))
-      (:monthly (local-date-time-plus-months start amount))
-      (:yearly (local-date-time-plus-years start amount)))))
-
-(defun %rrule-local-within-until-p (local until)
-  (or (null until) (local-date-time<= local until)))
-
-(defun %rrule-resolve-local (local zone)
-  (multiple-value-bind (kind first-offset) (%classify-local-date-time local zone)
-    (unless (eq kind :gap)
-      (%make-zoned-date-time local zone first-offset))))
 
 (progn
   (defun %rrule-date-candidates (anchor rule dtstart &optional visitor)
@@ -104,46 +87,7 @@ This avoids calendar clamping drift for rules such as DTSTART=January 31."
                     negative-candidates)))
               (%rrule-merge-date-candidates
                 (nreverse positive-candidates)
-                (nreverse negative-candidates))))))))
-  (defun %rrule-date-occurrence-source (start rule max-periods)
-    "Return a stateful source of DATE occurrences for START and RULE."
-    (let ((until (rrule-until rule))
-          (count (rrule-count rule))
-          (emitted 0)
-          (period-index 0)
-          (candidates nil)
-          (exhausted nil)
-          (start-local
-          (local-date-time-of
-            (local-date-year start)
-            (local-date-month start)
-            (local-date-day start)
-            0
-            0
-            0)))
-      (when (and (null until) (null max-periods))
-        (%invalid-rrule
-          "RRULE schedules without UNTIL require a positive :MAX-PERIODS"
-          start))
-      (lambda ()
-        (loop (when (or exhausted (and count (>= emitted count)))
-            (setf exhausted t)
-            (return (values nil nil))) (when candidates
-            (let ((occurrence (pop candidates)))
-              (when (and
-                  (local-date>= occurrence start)
-                  (or (null until) (local-date<= occurrence until)))
-                (incf emitted)
-                (return (values occurrence t))))) (unless candidates
-            (when (and max-periods (>= period-index max-periods))
-              (setf exhausted t)
-              (return (values nil nil)))
-            (let ((anchor (%rrule-anchor-at start-local rule period-index)))
-              (when (and until (local-date> (local-date-time-date anchor) until))
-                (setf exhausted t)
-                (return (values nil nil)))
-              (incf period-index)
-              (setf candidates (%rrule-selected-date-candidates anchor rule start-local)))))))))
+                (nreverse negative-candidates)))))))))
 
 (defun %rrule-local-candidates (anchor rule dtstart &optional visitor)
   "Return ordered local DATE-TIME candidates, or visit raw components."
@@ -271,145 +215,3 @@ This avoids calendar clamping drift for rules such as DTSTART=January 31."
               (%rrule-merge-local-candidates
                 (nreverse positive-candidates)
                 (nreverse negative-candidates)))))))))
-
-(progn
-  (defun %rrule-local-date-time-occurrence-source (start rule max-periods)
-    "Return a stateful source of floating LOCAL-DATE-TIME occurrences."
-    (let ((until (rrule-until rule))
-          (count (rrule-count rule))
-          (emitted 0)
-          (period-index 0)
-          (candidates nil)
-          (exhausted nil))
-      (when (and (null until) (null max-periods))
-        (%invalid-rrule
-          "RRULE schedules without UNTIL require a positive :MAX-PERIODS"
-          start))
-      (lambda ()
-        (loop (when (or exhausted (and count (>= emitted count)))
-            (setf exhausted t)
-            (return (values nil nil))) (when candidates
-            (let ((occurrence (pop candidates)))
-              (when (and
-                  (local-date-time>= occurrence start)
-                  (%rrule-local-within-until-p occurrence until))
-                (incf emitted)
-                (return (values occurrence t))))) (unless candidates
-            (when (and max-periods (>= period-index max-periods))
-              (setf exhausted t)
-              (return (values nil nil)))
-            (let ((anchor (%rrule-anchor-at start rule period-index)))
-              (when (and until (local-date-time> anchor until))
-                (setf exhausted t)
-                (return (values nil nil)))
-              (incf period-index)
-              (setf candidates (%rrule-selected-local-candidates anchor rule start))))))))
-  (defun %rrule-zoned-occurrence-source (start rule max-periods)
-    "Return a stateful source of ZONED-DATE-TIME occurrences.
-Nonexistent local candidates are skipped; overlaps use the earlier instant."
-    (let* ((zone (zoned-date-time-zone start))
-           (start-local (zoned-date-time-local start))
-           (until (rrule-until rule))
-           (count (rrule-count rule))
-           (emitted 0)
-           (period-index 0)
-           (candidates nil)
-           (exhausted nil))
-      (when (and (null until) (null max-periods))
-        (%invalid-rrule
-          "RRULE schedules without UNTIL require a positive :MAX-PERIODS"
-          start))
-      (labels ((past-until-p (local &optional occurrence)
-                 (cond
-              ((null until) nil)
-              ((local-date-time-p until) (local-date-time> local until))
-              (t
-                (let ((resolved (or occurrence (%rrule-resolve-local local zone))))
-                  (and resolved (instant> (zoned-date-time-to-instant resolved) until)))))))
-        (lambda ()
-          (loop (when (or exhausted (and count (>= emitted count)))
-              (setf exhausted t)
-              (return (values nil nil))) (when candidates
-              (let* ((local (pop candidates))
-                     (occurrence
-                    (and (local-date-time>= local start-local) (%rrule-resolve-local local zone))))
-                (when (and occurrence (not (past-until-p local occurrence)))
-                  (incf emitted)
-                  (return (values occurrence t))))) (unless candidates
-              (when (and max-periods (>= period-index max-periods))
-                (setf exhausted t)
-                (return (values nil nil)))
-              (let ((anchor (%rrule-anchor-at start-local rule period-index)))
-                (when (past-until-p anchor)
-                  (setf exhausted t)
-                  (return (values nil nil)))
-                (incf period-index)
-                (setf candidates (%rrule-selected-local-candidates anchor rule start-local)))))))))
-  (defun %rrule-occurrence-source (schedule max-periods)
-    "Select the recurrence source for SCHEDULE's DTSTART value type."
-    (let* ((start (rrule-schedule-dtstart schedule))
-           (rule (rrule-schedule-rrule schedule))
-           (selector
-          (unless (%rrule-yearly-direct-p rule)
-            (%compile-rrule-day-selector rule)))
-           (source
-          (cond
-            ((local-date-p start) (%rrule-date-occurrence-source start rule max-periods))
-            ((local-date-time-p start)
-              (%rrule-local-date-time-occurrence-source start rule max-periods))
-            ((zoned-date-time-p start)
-              (%rrule-zoned-occurrence-source start rule max-periods))
-            (t (%invalid-rrule "unsupported DTSTART type" start)))))
-      (lambda ()
-        (let ((*rrule-day-selector* selector))
-          (funcall source)))))
-  (defun map-rrule-occurrences (function schedule &key max-periods)
-    "Call FUNCTION for each occurrence of SCHEDULE, stopping when it returns NIL.
-Schedules without UNTIL require a positive MAX-PERIODS limit on evaluated
-frequency periods.  Returns NIL when exhausted or stopped."
-    (check-type schedule rrule-schedule)
-    (when (and max-periods (not (and (integerp max-periods) (plusp max-periods))))
-      (%invalid-rrule ":MAX-PERIODS must be a positive integer" max-periods))
-    (let ((source (%rrule-occurrence-source schedule max-periods)))
-      (loop (multiple-value-bind (occurrence present-p) (funcall source)
-          (unless present-p
-            (return nil))
-          (unless (funcall function occurrence)
-            (return nil)))))))
-
-(defun rrule-occurrences (schedule &key max-periods)
-  "Return all occurrences of SCHEDULE as a list.
-Schedules without UNTIL require a positive MAX-PERIODS limit on evaluated
-frequency periods."
-  (let (result)
-    (map-rrule-occurrences
-      (lambda (occurrence)
-        (push occurrence result)
-        t)
-      schedule
-      :max-periods
-      max-periods)
-    (nreverse result)))
-
-(defmacro do-rrule-occurrences ((variable schedule &key max-periods result) &body body)
-  "Iterate VARIABLE over SCHEDULE occurrences.
-Schedules without UNTIL require a positive :MAX-PERIODS; :RESULT is returned
-when iteration completes.  RETURN exits the iteration."
-  (let ((completion-marker (gensym "COMPLETION-MARKER"))
-        (exit-tag (gensym "EXIT-TAG"))
-        (body-result (gensym "BODY-RESULT")))
-    `(let ((,completion-marker (gensym))
-          (,exit-tag (gensym)))
-      (catch ,exit-tag
-        (map-rrule-occurrences
-          (lambda (,variable)
-            (let ((,body-result
-                  (block nil
-                    ,@body
-                    ,completion-marker)))
-              (if (eq ,body-result ,completion-marker) t
-                (throw ,exit-tag ,body-result))))
-          ,schedule
-          :max-periods
-          ,max-periods)
-        ,result))))
