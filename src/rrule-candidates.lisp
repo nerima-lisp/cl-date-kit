@@ -7,6 +7,38 @@
 ;;;; owns the BYxxx day-selector matching this file calls into.
 (in-package #:cl-date-kit)
 
+(defun %rrule-set-position-bitmaps (positions)
+  "Return (VALUES POSITIVE-POSITIONS NEGATIVE-POSITIONS MAXIMUM-POSITIVE
+MINIMUM-NEGATIVE RING-LENGTH) bit-vectors and bounds for BYSETPOS POSITIONS,
+shared by the DATE and local DATE-TIME candidate selectors."
+  (let ((maximum-positive nil)
+        (minimum-negative nil))
+    (dolist (position positions)
+      (cond
+        ((plusp position)
+          (setf maximum-positive (if maximum-positive (max maximum-positive position)
+              position)))
+        ((minusp position)
+          (setf minimum-negative (if minimum-negative (min minimum-negative position)
+              position)))))
+    (let* ((positive-positions
+          (make-array (1+ (or maximum-positive 0)) :element-type 'bit :initial-element 0))
+           (ring-length (abs (or minimum-negative 0)))
+           (negative-positions
+          (make-array (1+ ring-length) :element-type 'bit :initial-element 0)))
+      (dolist (position positions)
+        (cond
+          ((plusp position)
+            (setf (aref positive-positions position) 1))
+          ((minusp position)
+            (setf (aref negative-positions (- position)) 1))))
+      (values
+        positive-positions
+        negative-positions
+        maximum-positive
+        minimum-negative
+        ring-length))))
+
 (progn
   (defun %rrule-date-candidates (anchor rule dtstart &optional visitor)
     "Return ordered DATE candidates, or call VISITOR for each DATE."
@@ -33,35 +65,14 @@
   (defun %rrule-selected-date-candidates (anchor rule dtstart)
     (let ((positions (rrule-by-set-pos rule)))
       (if (null positions) (%rrule-date-candidates anchor rule dtstart)
-        (let ((maximum-positive nil)
-              (minimum-negative nil))
-          (dolist (position positions)
-            (cond
-              ((plusp position)
-                (setf maximum-positive (if maximum-positive (max maximum-positive position)
-                    position)))
-              ((minusp position)
-                (setf minimum-negative (if minimum-negative (min minimum-negative position)
-                    position)))))
-          (let* ((positive-positions
-                (make-array
-                  (1+ (or maximum-positive 0))
-                  :element-type
-                  (quote bit)
-                  :initial-element
-                  0))
-                 (ring-length (abs (or minimum-negative 0)))
-                 (negative-positions
-                (make-array (1+ ring-length) :element-type (quote bit) :initial-element 0))
-                 (ring-dates (make-array ring-length))
+        (multiple-value-bind (positive-positions
+            negative-positions
+            maximum-positive
+            minimum-negative
+            ring-length) (%rrule-set-position-bitmaps positions)
+          (let* ((ring-dates (make-array ring-length))
                  (positive-candidates nil)
                  (candidate-count 0))
-            (dolist (position positions)
-              (cond
-                ((plusp position)
-                  (setf (aref positive-positions position) 1))
-                ((minusp position)
-                  (setf (aref negative-positions (- position)) 1))))
             (%rrule-date-candidates
               anchor
               rule
@@ -143,39 +154,18 @@
   (defun %rrule-selected-local-candidates (anchor rule dtstart)
     (let ((positions (rrule-by-set-pos rule)))
       (if (null positions) (%rrule-local-candidates anchor rule dtstart)
-        (let ((maximum-positive nil)
-              (minimum-negative nil))
-          (dolist (position positions)
-            (cond
-              ((plusp position)
-                (setf maximum-positive (if maximum-positive (max maximum-positive position)
-                    position)))
-              ((minusp position)
-                (setf minimum-negative (if minimum-negative (min minimum-negative position)
-                    position)))))
-          (let* ((positive-positions
-                (make-array
-                  (1+ (or maximum-positive 0))
-                  :element-type
-                  (quote bit)
-                  :initial-element
-                  0))
-                 (ring-length (abs (or minimum-negative 0)))
-                 (negative-positions
-                (make-array (1+ ring-length) :element-type (quote bit) :initial-element 0))
-                 (ring-years (make-array ring-length))
+        (multiple-value-bind (positive-positions
+            negative-positions
+            maximum-positive
+            minimum-negative
+            ring-length) (%rrule-set-position-bitmaps positions)
+          (let* ((ring-years (make-array ring-length))
                  (ring-months (make-array ring-length))
                  (ring-days (make-array ring-length))
                  (ring-times (make-array ring-length))
                  (positive-candidates nil)
                  (candidate-count 0)
                  (nanosecond (local-date-time-nanosecond anchor)))
-            (dolist (position positions)
-              (cond
-                ((plusp position)
-                  (setf (aref positive-positions position) 1))
-                ((minusp position)
-                  (setf (aref negative-positions (- position)) 1))))
             (%rrule-local-candidates
               anchor
               rule
