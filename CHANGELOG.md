@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `flake.nix` now builds on [`nerima-lisp/cl-nix-forge`](https://github.com/nerima-lisp/cl-nix-forge)
+  (`v0.4.0`) instead of hand-written `pkgs.sbcl.buildASDFSystem` plumbing and
+  a bespoke `:version` regex extraction: `lispDerivation`/`mkLispSource` for
+  the `cl-weave` and `cl-date-kit` packages, `fromAsdSystem` for the version,
+  `mkScriptCheck` for `checks.default`, `mkDocsSite` for the docs package.
+  Every `packages`/`checks`/`apps`/`devShells` name and observable behavior
+  (timeouts, `TZDIR` wiring, `nix run .#test`/`.#coverage`/`.#benchmark`)
+  is unchanged; `apps.coverage`/`apps.benchmark` stayed hand-written since
+  cl-nix-forge has no equivalent for their exact contract.
 - The test dependency `cl-weave` is now pinned to `v1.1.0` (from `v1.0.1`).
 - Pattern field validation, formatting, and parsing (`src/pattern.lisp`,
   `src/pattern-parser.lisp`) now share one data-driven field registry
@@ -38,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The four independent hand-rolled ISO weekday-name<->number mappings
   (`local-date.lisp` x3, `rrule-date-selection.lisp` x1) were consolidated
   into table lookups against the existing canonical weekday-order tables.
+- Table-driven test cases across most of the test suite now use cl-weave's
+  `it-each`, reporting each data-table row as its own named case instead of
+  collapsing into one `dolist`-driven `it`; `t/iso8601-test.lisp` also
+  gained an `it-property` round-trip check (`parse-duration` inverts
+  `format-duration` for ~100 generated durations).
+- `rrule-candidates.lisp`'s three near-duplicate occurrence-source state
+  machines (one per `DTSTART` kind) now share one higher-order helper,
+  `%rrule-run-occurrence-source`, parameterized by closures instead of each
+  reimplementing the same loop; the occurrence-source logic and public
+  `map-rrule-occurrences`/`rrule-occurrences`/`do-rrule-occurrences` API
+  moved to a new `rrule-occurrences.lisp`.
 
 ### Fixed
 
