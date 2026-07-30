@@ -716,10 +716,12 @@ temporal value. `:LOCALE` may also be a `DATE-TIME-LOCALE` created by
 month at widths 3-4), `d` (day), `D` (ordinal day), `Y` (ISO
 week-based year), `w` (ISO week), `e` (ISO weekday), `H` (24-hour clock), `h`
 (12-hour clock), `m`/`s` (time), `S`
-(nanosecond fraction), `X` (ISO offset), `V` (IANA zone ID), and `z` (the
-active IANA zone abbreviation). `V` and `z` only support width 1. `E` at
-widths 3-4 emits abbreviated/full locale weekday names, and `a` emits the
-locale AM/PM text.
+(nanosecond fraction), `A` (millisecond of day), `X` (ISO offset), `V` (IANA
+zone ID), and `z` (the active IANA zone abbreviation). `V` and `z` only
+support width 1. `E` at widths 3-4 emits abbreviated/full locale weekday
+names, and `a` emits the locale AM/PM text. `A` cannot be combined with `H`,
+`h`, `m`, `s`, `S`, or `a` in the same pattern -- it stands alone as a
+complete time source when parsed.
 Quote literal text with apostrophes and escape an apostrophe with `''`.
 
 `MAKE-DATE-TIME-LOCALE` accepts a keyword name, vectors of 12 abbreviated and

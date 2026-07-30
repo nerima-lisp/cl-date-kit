@@ -145,11 +145,20 @@
         (some
           (lambda (field)
             (%pattern-present-p field values))
-          (list #\H #\h #\m #\s #\S #\a))))
+          (list #\H #\h #\m #\s #\S #\a #\A))))
     (when present
       (let ((has-24-hour (%pattern-present-p #\H values))
             (has-12-hour (%pattern-present-p #\h values))
+            (has-milli-of-day (%pattern-present-p #\A values))
             (meridiem (%pattern-value #\a values)))
+        (when (and has-milli-of-day (or has-24-hour has-12-hour meridiem
+                                         (%pattern-present-p #\m values)
+                                         (%pattern-present-p #\s values)
+                                         (%pattern-present-p #\S values)))
+          (%pattern-parse-error string pattern))
+        (when has-milli-of-day
+          (return-from %pattern-build-time
+            (local-time-of-nano-of-day (* (%pattern-value #\A values) 1000000))))
         (unless (or has-24-hour has-12-hour)
           (%pattern-parse-error string pattern))
         (when (and has-24-hour has-12-hour)

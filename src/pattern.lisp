@@ -102,8 +102,9 @@
 
 Supported fields are y (year), M (month), d (day), D (day of year), Y (week
 based year), w (week number), e (weekday), E (weekday name), H (24-hour
-clock), h (12-hour clock), m (minute), s (second), S (fraction), a (AM/PM),
-X (ISO offset), V (IANA zone name), and z (active IANA zone abbreviation).
+clock), h (12-hour clock), m (minute), s (second), S (fraction), A
+(millisecond of day), a (AM/PM), X (ISO offset), V (IANA zone name), and z
+(active IANA zone abbreviation).
 Textual fields use LOCALE. Literal text is quoted with single quotes; doubled
 quotes produce one quote."
   (let ((locale-object (find-date-time-locale locale)))
@@ -225,6 +226,13 @@ quotes produce one quote."
         (floor
           (local-time-nanosecond (%require-pattern-field time pattern field "a time"))
           (expt 10 (- 9 width)))
+        width))
+    (#\A
+      (%write-pattern-number
+        stream
+        (floor
+          (local-time-to-nano-of-day (%require-pattern-field time pattern field "a time"))
+          1000000)
         width))
     (#\X
       (%write-pattern-offset
