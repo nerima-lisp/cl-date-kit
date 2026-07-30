@@ -14,7 +14,11 @@
     (expect (length-of-month 2024 2) :to-be 29)
     (expect (length-of-month 2023 2) :to-be 28)
     (expect (length-of-month 2024 4) :to-be 30)
-    (expect (length-of-month 2024 1) :to-be 31)))
+    (expect (length-of-month 2024 1) :to-be 31))
+  (it
+    "LENGTH-OF-MONTH signals TYPE-ERROR outside its integer calendar domain"
+    (signals type-error (length-of-month 2024 13))
+    (signals type-error (length-of-month 2024 2.0))))
 
 (describe
   "LocalDate calendar facts"
@@ -37,6 +41,10 @@
   (it
     "signals INVALID-DATE for a month outside 1-12"
     (signals invalid-date (make-local-date 2023 13 1)))
+  (it
+    "signals INVALID-DATE for noninteger calendar fields"
+    (signals invalid-date (make-local-date 2024 2.0 1))
+    (signals invalid-date (make-local-date 2024 2 1.0)))
   (it
     "accepts February 29 in a leap year"
     (expect (local-date-day (make-local-date 2024 2 29)) :to-be 29)))
@@ -80,7 +88,29 @@
         (local-date-time-of 2024 6 15 0 0 0))
       :to-be-truthy)))
 
-(describe "ISO weekday values" (it "converts between ISO values and keyword weekdays" (expect (cl-date-kit:day-of-week-value :monday) :to-be 1) (expect (cl-date-kit:day-of-week-value :sunday) :to-be 7) (expect (cl-date-kit:day-of-week-from-value 1) :to-be :monday) (expect (cl-date-kit:day-of-week-from-value 7) :to-be :sunday)) (it "wraps arithmetic in both directions" (expect (cl-date-kit:day-of-week-plus :sunday 1) :to-be :monday) (expect (cl-date-kit:day-of-week-plus :monday -1) :to-be :sunday) (expect (cl-date-kit:day-of-week-minus :monday 1) :to-be :sunday) (expect (cl-date-kit:day-of-week-length :wednesday) :to-be 7)) (it "rejects invalid weekday designators and values" (signals cl-date-kit:invalid-day-of-week (cl-date-kit:day-of-week-value :weekday)) (signals cl-date-kit:invalid-day-of-week (cl-date-kit:day-of-week-from-value 0)) (signals cl-date-kit:invalid-day-of-week (cl-date-kit:day-of-week-plus :monday 1/2))))
+(describe
+  "ISO weekday values"
+  (it
+    "converts between ISO values and keyword weekdays"
+    (expect (cl-date-kit:day-of-week-value :monday) :to-be 1)
+    (expect (cl-date-kit:day-of-week-value :sunday) :to-be 7)
+    (expect (cl-date-kit:day-of-week-from-value 1) :to-be :monday)
+    (expect (cl-date-kit:day-of-week-from-value 7) :to-be :sunday))
+  (it
+    "wraps arithmetic in both directions"
+    (expect (cl-date-kit:day-of-week-plus :sunday 1) :to-be :monday)
+    (expect (cl-date-kit:day-of-week-plus :monday -1) :to-be :sunday)
+    (expect (cl-date-kit:day-of-week-minus :monday 1) :to-be :sunday)
+    (expect (cl-date-kit:day-of-week-length :wednesday) :to-be 7))
+  (it
+    "rejects invalid weekday designators and values"
+    (signals
+      cl-date-kit:invalid-day-of-week
+      (cl-date-kit:day-of-week-value :weekday))
+    (signals cl-date-kit:invalid-day-of-week (cl-date-kit:day-of-week-from-value 0))
+    (signals
+      cl-date-kit:invalid-day-of-week
+      (cl-date-kit:day-of-week-plus :monday 1/2))))
 
 (describe
   "DAY-OF-WEEK and DAY-OF-YEAR"
@@ -253,16 +283,24 @@
     "calendar boundary adjusters return immutable values"
     (let ((date (make-local-date 2024 2 15)))
       (expect
-        (local-date= (cl-date-kit:local-date-first-day-of-month date) (make-local-date 2024 2 1))
+        (local-date=
+          (cl-date-kit:local-date-first-day-of-month date)
+          (make-local-date 2024 2 1))
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-last-day-of-month date) (make-local-date 2024 2 29))
+        (local-date=
+          (cl-date-kit:local-date-last-day-of-month date)
+          (make-local-date 2024 2 29))
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-first-day-of-year date) (make-local-date 2024 1 1))
+        (local-date=
+          (cl-date-kit:local-date-first-day-of-year date)
+          (make-local-date 2024 1 1))
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-last-day-of-year date) (make-local-date 2024 12 31))
+        (local-date=
+          (cl-date-kit:local-date-last-day-of-year date)
+          (make-local-date 2024 12 31))
         :to-be-truthy)))
   (it
     "weekday adjusters distinguish inclusive and strict movement"
@@ -271,31 +309,110 @@
         (local-date= (cl-date-kit:local-date-next-or-same monday :monday) monday)
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-next monday :monday) (make-local-date 2024 6 10))
+        (local-date=
+          (cl-date-kit:local-date-next monday :monday)
+          (make-local-date 2024 6 10))
         :to-be-truthy)
       (expect
         (local-date= (cl-date-kit:local-date-previous-or-same monday :monday) monday)
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-previous monday :monday) (make-local-date 2024 5 27))
+        (local-date=
+          (cl-date-kit:local-date-previous monday :monday)
+          (make-local-date 2024 5 27))
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-next monday :friday) (make-local-date 2024 6 7))
+        (local-date=
+          (cl-date-kit:local-date-next monday :friday)
+          (make-local-date 2024 6 7))
         :to-be-truthy)
       (expect
-        (local-date= (cl-date-kit:local-date-previous monday :friday) (make-local-date 2024 5 31))
+        (local-date=
+          (cl-date-kit:local-date-previous monday :friday)
+          (make-local-date 2024 5 31))
         :to-be-truthy))))
 
-(describe "LocalDate OF constructor" (it "delegates Gregorian field validation to MAKE-LOCAL-DATE" (expect (local-date= (cl-date-kit:local-date-of 2024 2 29) (make-local-date 2024 2 29)) :to-be-truthy) (signals invalid-date (cl-date-kit:local-date-of 2023 2 29))))
+(progn
+  (describe
+    "LocalDate TemporalAdjusters"
+    (it
+      "returns first days of the next month and year"
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-first-day-of-next-month (make-local-date 2024 1 31))
+          (make-local-date 2024 2 1))
+        :to-be-truthy)
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-first-day-of-next-year (make-local-date 2024 2 29))
+          (make-local-date 2025 1 1))
+        :to-be-truthy))
+    (it
+      "finds first and last weekdays within a month"
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-first-in-month (make-local-date 2024 6 15) :monday)
+          (make-local-date 2024 6 3))
+        :to-be-truthy)
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-last-in-month (make-local-date 2024 6 15) :monday)
+          (make-local-date 2024 6 24))
+        :to-be-truthy)
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-last-in-month (make-local-date 2024 2 15) :thursday)
+          (make-local-date 2024 2 29))
+        :to-be-truthy))
+    (it
+      "counts weekday ordinals from either month boundary and permits spillover"
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-day-of-week-in-month
+            (make-local-date 2024 2 15)
+            5
+            :sunday)
+          (make-local-date 2024 3 3))
+        :to-be-truthy)
+      (expect
+        (local-date=
+          (cl-date-kit:local-date-day-of-week-in-month
+            (make-local-date 2024 2 15)
+            -5
+            :sunday)
+          (make-local-date 2024 1 28))
+        :to-be-truthy))
+    (it
+      "rejects invalid weekday ordinals"
+      (signals
+        invalid-date
+        (cl-date-kit:local-date-day-of-week-in-month
+          (make-local-date 2024 2 15)
+          0
+          :monday))
+      (signals
+        invalid-date
+        (cl-date-kit:local-date-day-of-week-in-month
+          (make-local-date 2024 2 15)
+          1/2
+          :monday))))
+  (describe
+    "LocalDate OF constructor"
+    (it
+      "delegates Gregorian field validation to MAKE-LOCAL-DATE"
+      (expect
+        (local-date= (cl-date-kit:local-date-of 2024 2 29) (make-local-date 2024 2 29))
+        :to-be-truthy)
+      (signals invalid-date (cl-date-kit:local-date-of 2023 2 29)))))
 
 (describe
   "LOCAL-DATE-AT-START-OF-DAY-IN-ZONE"
   (it
     "uses midnight in a fixed-offset zone"
     (let ((value
-            (local-date-at-start-of-day-in-zone
-              (make-local-date 2024 6 15)
-              (zone-offset-utc))))
+          (local-date-at-start-of-day-in-zone
+            (make-local-date 2024 6 15)
+            (zone-offset-utc))))
       (expect
         (local-date-time=
           (zoned-date-time-local value)
@@ -304,9 +421,9 @@
   (it
     "moves a midnight gap to the first valid local time"
     (let ((value
-            (local-date-at-start-of-day-in-zone
-              (make-local-date 2018 11 4)
-              (find-time-zone "America/Sao_Paulo"))))
+          (local-date-at-start-of-day-in-zone
+            (make-local-date 2018 11 4)
+            (find-time-zone "America/Sao_Paulo"))))
       (expect
         (local-date-time=
           (zoned-date-time-local value)
@@ -319,4 +436,5 @@
       (local-date-at-start-of-day-in-zone
         (make-local-date 2018 11 4)
         (find-time-zone "America/Sao_Paulo")
-        :disambiguation :strict))))
+        :disambiguation
+        :strict))))

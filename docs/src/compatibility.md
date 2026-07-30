@@ -4,6 +4,13 @@
 
 `FIND-TIME-ZONE` reads the compiled IANA time zone database (TZif, RFC
 8536) from disk: first `$TZDIR/<name>`, then `/usr/share/zoneinfo/<name>`.
+`TIME-ZONE-DATABASE-VERSION` reads an explicit `:TZDIR` root only; otherwise
+it reads `$TZDIR` and then `/usr/share/zoneinfo`. It reads each root's
+`+VERSION` first and accepts it only when it is exactly a `YYYYx` IANA release.
+Otherwise it reads `tzdata.zi` and returns the leading `YYYYx` token from its
+first `# version <release>` comment, discarding suffixes such as `-rearguard`.
+It returns `NIL` rather than signaling when the metadata is missing, unreadable,
+overlong, or malformed.
 It does not bundle a copy of the database, so:
 
 - The library adds no ASDF dependency, but its *correctness* depends on
@@ -50,7 +57,9 @@ describing behavior after the last explicit transition.
 - **Non-Gregorian calendars.** `LOCAL-DATE` is proleptic Gregorian only,
   extended backward with no adjustment for the Julian calendar or any
   regional switchover date.
-- **Locale-sensitive text.** `DATE-TIME-FORMATTER` supports the portable,
-  numeric subset of Java-style patterns (`y`, `M`, `d`, `D`, `Y`, `w`, `e`,
-  `H`, `m`, `s`, `S`, `X`, and `V`), but intentionally ships no locale data
-  for translated month/day names or localized numerals.
+- **Locale-sensitive text.** `DATE-TIME-FORMATTER` ships English `:EN` and
+  Japanese `:JA` locales. `MAKE-DATE-TIME-LOCALE` can supply other translated
+  month names, weekday names, and AM/PM text for `MMM`/`MMMM`, `EEE`/`EEEE`,
+  and `a`; localized numerals are not supported. The 12-hour `h` field
+  requires `a`; `a` also validates the existing 24-hour `H` field when both
+  are present.

@@ -29,6 +29,10 @@
   "Drops DATE's year and returns its MONTH-DAY."
   (%make-month-day (local-date-month date) (local-date-day date)))
 
+(defun month-day-now (&key (zone (zone-offset-utc)) (clock (current-clock)))
+  "Returns the current MONTH-DAY in ZONE according to CLOCK."
+  (month-day-from-local-date (local-date-now :zone zone :clock clock)))
+
 (defun month-day-valid-year-p (value year)
   "Returns true when VALUE occurs in the integral proleptic Gregorian YEAR."
   (and (integerp year)

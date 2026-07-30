@@ -10,7 +10,7 @@
   (format-local-date (local-date-plus-years date 1)))
 ;; => "2025-02-28"  -- clamped, since 2025 is not a leap year
 
-(local-date-until (make-local-date 2020 1 31) (make-local-date 2021 3 1))
+(period-between (make-local-date 2020 1 31) (make-local-date 2021 3 1))
 ;; => #S(PERIOD :YEARS 1 :MONTHS 1 :DAYS 1)
 ```
 
@@ -57,8 +57,7 @@ exactly why `ZONED-DATE-TIME` has separate `-PLUS-DURATION` and
 (let* ((before (zoned-date-time-of-local (local-date-time-of 2024 3 9 12 0 0) ny))
        (after (zoned-date-time-plus-period before (period-of-days 1))))
   (values (format-zoned-date-time after)
-          (duration-to-seconds (instant-until (zoned-date-time-to-instant before)
-                                               (zoned-date-time-to-instant after)))))
+          (duration-to-seconds (duration-between before after))))
 ;; => "2024-03-10T12:00:00-04:00[America/New_York]"
 ;;    82800  (23 hours, not 86400)
 ```

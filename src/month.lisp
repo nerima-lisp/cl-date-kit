@@ -79,3 +79,7 @@
 (defun month-from-local-date (date)
   "Return DATE's ISO month keyword."
   (month-from-value (local-date-month date)))
+
+(defun month-now (&key (zone (zone-offset-utc)) (clock (current-clock)))
+  "Return the current ISO month in ZONE according to CLOCK."
+  (month-from-local-date (local-date-now :zone zone :clock clock)))

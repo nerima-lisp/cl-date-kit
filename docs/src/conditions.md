@@ -1,7 +1,8 @@
 # Conditions
 
-Every condition cl-date-kit signals inherits from `CL-DATE-KIT-ERROR`, so
-catching that one condition handles any failure from this library.
+Every cl-date-kit domain-validation condition inherits from
+`CL-DATE-KIT-ERROR`, so callers can handle invalid temporal values and input
+formats without naming each specific condition.
 
 | Condition | Signaled by | Why |
 |---|---|---|
@@ -17,7 +18,11 @@ catching that one condition handles any failure from this library.
 | `MALFORMED-TZIF` | The TZif parser | A file exists at the expected path but its header or data blocks are not RFC 8536-shaped. |
 | `NONEXISTENT-LOCAL-TIME` | `RESOLVE-LOCAL-DATE-TIME` with `:DISAMBIGUATION :STRICT` | The local date-time falls in a spring-forward gap: the wall clock jumped past it. |
 | `AMBIGUOUS-LOCAL-TIME` | `RESOLVE-LOCAL-DATE-TIME` with `:DISAMBIGUATION :STRICT` | The local date-time falls in a fall-back overlap: the wall clock repeated it under two different offsets. |
+| `INVALID-ZONED-DATE-TIME-OFFSET` | `ZONED-DATE-TIME-OF-STRICT` | The supplied offset is not a valid resolution of the local date-time in the zone, including gaps and invalid overlap offsets. |
 | `INVALID-ZONE-OFFSET` | `ZONE-OFFSET-OF-HMS` | Hours, minutes, or seconds are out of range, have mixed signs, or the magnitude exceeds the ISO-8601 limit of +-18:00 (java.time's `ZoneOffset.MIN`/`MAX`) -- including +-18:00 itself with a nonzero minute or second. |
+| `INVALID-DURATION-DIVISION` | `DURATION-DIVIDED-BY` | The divisor is zero. `INVALID-DURATION-DIVISION-DURATION` and `INVALID-DURATION-DIVISION-DIVISOR` retain the rejected operands. |
+| `INSTANT-PRECISION-LOSS` | `INSTANT-TO-UNIVERSAL-TIME` | The requested conversion would discard nonzero precision. `INSTANT-PRECISION-LOSS-INSTANT` is the rejected value; `INSTANT-PRECISION-LOSS-REPRESENTATION` identifies the target representation. |
+| `INVALID-RRULE` | RRULE parsing, construction, recurrence scheduling, and set validation | An RFC 5545 rule is syntactically or semantically invalid. `INVALID-RRULE-REASON` identifies the violated rule; `INVALID-RRULE-VALUE` contains the offending input when available. |
 
 ## Disambiguation policies
 

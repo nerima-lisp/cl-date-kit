@@ -20,6 +20,10 @@
   "Drops DATE's month and day and returns its YEAR."
   (%make-year (local-date-year date)))
 
+(defun year-now (&key (zone (zone-offset-utc)) (clock (current-clock)))
+  "Returns the current YEAR in ZONE according to CLOCK."
+  (year-from-local-date (local-date-now :zone zone :clock clock)))
+
 (defun year-from-year-month (value)
   "Drops VALUE's month and returns its YEAR."
   (%make-year (year-month-year value)))
@@ -31,6 +35,11 @@
 (defun year-length (value)
   "Returns 365 or 366 according to whether VALUE is a leap year."
   (if (year-leap-p value) 366 365))
+
+(defun year-valid-month-day-p (value month-day)
+  "Returns true when MONTH-DAY occurs in the calendar year of VALUE."
+  (check-type month-day month-day)
+  (month-day-valid-year-p month-day (year-value value)))
 
 (defun year-at-month (value month)
   "Combines VALUE with MONTH as a YEAR-MONTH."

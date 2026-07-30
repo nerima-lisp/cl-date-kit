@@ -21,13 +21,14 @@
     (or (not (zerop (mod year 100))) (zerop (mod year 400)))))
 
 (defun length-of-month (year month)
+  (check-type year integer)
+  (check-type month (integer 1 12))
   (case month
     ((1 3 5 7 8 10 12) 31)
     ((4 6 9 11) 30)
     (2
       (if (leap-year-p year) 29
-        28))
-    (t (error "Month ~D is outside 1-12." month))))
+        28))))
 
 (defun local-date-leap-year-p (date)
   "Returns true when DATE occurs in a proleptic Gregorian leap year."
@@ -39,11 +40,17 @@
 
 (defun local-date-length-of-year (date)
   "Returns the number of days in DATE's calendar year."
-  (if (local-date-leap-year-p date) 366 365))
+  (if (local-date-leap-year-p date) 366
+    365))
 
 (defun make-local-date (year month day)
-  (unless (and (<= 1 month 12) (<= 1 day (length-of-month year month)))
-    (error 'invalid-date :year year :month month :day day))
+  (unless (and
+      (integerp year)
+      (integerp month)
+      (integerp day)
+      (<= 1 month 12)
+      (<= 1 day (length-of-month year month)))
+    (error (quote invalid-date) :year year :month month :day day))
   (%make-local-date year month day))
 
 (defun local-date-to-epoch-day (date)
@@ -52,7 +59,9 @@
     (local-date-month date)
     (local-date-day date)))
 
-(defun local-date-of (year month day) "Construct a LOCAL-DATE from proleptic Gregorian fields." (make-local-date year month day))
+(defun local-date-of (year month day)
+  "Construct a LOCAL-DATE from proleptic Gregorian fields."
+  (make-local-date year month day))
 
 (defun local-date-from-epoch-day (epoch-day)
   (multiple-value-bind (year month day) (%civil-from-days epoch-day)
@@ -72,7 +81,8 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
   (local-date-time-at-zone
     (local-date-at-start-of-day date)
     zone
-    :disambiguation disambiguation))
+    :disambiguation
+    disambiguation))
 
 (defun %days-from-civil (year month day)
   (let* ((y
@@ -148,17 +158,38 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
   "One of :MONDAY .. :SUNDAY. Epoch day 0 (1970-01-01) is a Thursday."
   (aref *day-of-week-names* (mod (local-date-to-epoch-day date) 7)))
 
-(defparameter *iso-day-of-week-names* #(:monday :tuesday :wednesday :thursday :friday :saturday :sunday) "ISO-8601 weekday keywords ordered from Monday through Sunday.")
+(defparameter *iso-day-of-week-names* #(:monday :tuesday :wednesday :thursday :friday :saturday :sunday)
+  "ISO-8601 weekday keywords ordered from Monday through Sunday.")
 
-(defun day-of-week-value (day-of-week) "Returns DAY-OF-WEEK's ISO-8601 value: Monday is 1 and Sunday is 7." (let ((index (position day-of-week *iso-day-of-week-names* :test #'eq))) (if index (1+ index) (error 'invalid-day-of-week :value day-of-week))))
+(defun day-of-week-value (day-of-week)
+  "Returns DAY-OF-WEEK's ISO-8601 value: Monday is 1 and Sunday is 7."
+  (let ((index (position day-of-week *iso-day-of-week-names* :test #'eq)))
+    (if index (1+ index)
+      (error 'invalid-day-of-week :value day-of-week))))
 
-(defun day-of-week-from-value (value) "Returns the weekday keyword for ISO-8601 VALUE in the inclusive range 1 through 7." (if (and (integerp value) (<= 1 value 7)) (aref *iso-day-of-week-names* (1- value)) (error 'invalid-day-of-week :value value)))
+(defun day-of-week-from-value (value)
+  "Returns the weekday keyword for ISO-8601 VALUE in the inclusive range 1 through 7."
+  (if (and (integerp value) (<= 1 value 7)) (aref *iso-day-of-week-names* (1- value))
+    (error 'invalid-day-of-week :value value)))
 
-(defun day-of-week-length (day-of-week) "Returns the number of days in DAY-OF-WEEK's ISO week." (day-of-week-value day-of-week) 7)
+(defun day-of-week-length (day-of-week)
+  "Returns the number of days in DAY-OF-WEEK's ISO week."
+  (day-of-week-value day-of-week)
+  7)
 
-(defun day-of-week-plus (day-of-week days) "Returns DAY-OF-WEEK advanced by integral DAYS, wrapping at the ISO week boundary." (unless (integerp days) (error 'invalid-day-of-week :value days)) (aref *iso-day-of-week-names* (mod (+ (1- (day-of-week-value day-of-week)) days) 7)))
+(defun day-of-week-plus (day-of-week days)
+  "Returns DAY-OF-WEEK advanced by integral DAYS, wrapping at the ISO week boundary."
+  (unless (integerp days)
+    (error 'invalid-day-of-week :value days))
+  (aref
+    *iso-day-of-week-names*
+    (mod (+ (1- (day-of-week-value day-of-week)) days) 7)))
 
-(defun day-of-week-minus (day-of-week days) "Returns DAY-OF-WEEK moved backward by integral DAYS, wrapping at the ISO week boundary." (unless (integerp days) (error 'invalid-day-of-week :value days)) (day-of-week-plus day-of-week (- days)))
+(defun day-of-week-minus (day-of-week days)
+  "Returns DAY-OF-WEEK moved backward by integral DAYS, wrapping at the ISO week boundary."
+  (unless (integerp days)
+    (error 'invalid-day-of-week :value days))
+  (day-of-week-plus day-of-week (- days)))
 
 (defun %iso-weekday-number (date)
   "Returns DATE's ISO weekday number, where Monday is 1 and Sunday is 7."
@@ -174,16 +205,14 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
 (defun %iso-week-1-monday (week-based-year)
   "Returns the Monday starting ISO week 1 of WEEK-BASED-YEAR."
   (let ((january-fourth (make-local-date week-based-year 1 4)))
-    (local-date-minus-days january-fourth
-      (1- (%iso-weekday-number january-fourth)))))
+    (local-date-minus-days january-fourth (1- (%iso-weekday-number january-fourth)))))
 
 (defun local-date-week-based-year (date)
   "Returns DATE's ISO 8601 week-based year.
 
 The week-based year can differ from LOCAL-DATE-YEAR around New Year's: ISO
 week 1 is the week containing January 4 and starts on Monday."
-  (local-date-year
-    (local-date-plus-days date (- 4 (%iso-weekday-number date)))))
+  (local-date-year (local-date-plus-days date (- 4 (%iso-weekday-number date)))))
 
 (defun local-date-week-of-week-based-year (date)
   "Returns DATE's ISO 8601 week number within its week-based year."
@@ -192,8 +221,9 @@ week 1 is the week containing January 4 and starts on Monday."
          (week-monday (local-date-minus-days date (1- (%iso-weekday-number date)))))
     (1+
       (floor
-        (- (local-date-to-epoch-day week-monday)
-           (local-date-to-epoch-day week-one-monday))
+        (-
+          (local-date-to-epoch-day week-monday)
+          (local-date-to-epoch-day week-one-monday))
         7))))
 
 (defun local-date-of-week-date (week-based-year week day-of-week)
@@ -201,18 +231,20 @@ week 1 is the week containing January 4 and starts on Monday."
 
 Signals INVALID-DATE when the requested week does not exist in the given
 week-based year."
-  (unless (and (integerp week-based-year)
-               (integerp week)
-               (integerp day-of-week)
-               (<= 1 week 53)
-               (<= 1 day-of-week 7))
+  (unless (and
+      (integerp week-based-year)
+      (integerp week)
+      (integerp day-of-week)
+      (<= 1 week 53)
+      (<= 1 day-of-week 7))
     (error 'invalid-date :year week-based-year :month week :day day-of-week))
   (let ((date
         (local-date-plus-days
           (%iso-week-1-monday week-based-year)
           (+ (* 7 (1- week)) (1- day-of-week)))))
-    (unless (and (= (local-date-week-based-year date) week-based-year)
-                 (= (local-date-week-of-week-based-year date) week))
+    (unless (and
+        (= (local-date-week-based-year date) week-based-year)
+        (= (local-date-week-of-week-based-year date) week))
       (error 'invalid-date :year week-based-year :month week :day day-of-week))
     date))
 
@@ -321,65 +353,97 @@ This is the discoverable type-oriented spelling of LOCAL-DATE-UNTIL."
   (make-local-date (local-date-year date) (local-date-month date) day))
 
 (defun local-date-with-day-of-year (date day-of-year)
-    "Returns DATE with DAY-OF-YEAR in its current year."
-    (local-date-of-year-day (local-date-year date) day-of-year))
+  "Returns DATE with DAY-OF-YEAR in its current year."
+  (local-date-of-year-day (local-date-year date) day-of-year))
 
-  (defun local-date-first-day-of-month (date)
-    "Returns the first calendar day in DATE's month."
-    (%make-local-date (local-date-year date) (local-date-month date) 1))
+(defun local-date-first-day-of-month (date)
+  "Returns the first calendar day in DATE's month."
+  (%make-local-date (local-date-year date) (local-date-month date) 1))
 
-  (defun local-date-last-day-of-month (date)
-    "Returns the final calendar day in DATE's month."
-    (%make-local-date
-      (local-date-year date)
-      (local-date-month date)
-      (length-of-month (local-date-year date) (local-date-month date))))
+(defun local-date-last-day-of-month (date)
+  "Returns the final calendar day in DATE's month."
+  (%make-local-date
+    (local-date-year date)
+    (local-date-month date)
+    (length-of-month (local-date-year date) (local-date-month date))))
 
-  (defun local-date-first-day-of-year (date)
-    "Returns January 1 in DATE's calendar year."
-    (%make-local-date (local-date-year date) 1 1))
+(defun local-date-first-day-of-year (date)
+  "Returns January 1 in DATE's calendar year."
+  (%make-local-date (local-date-year date) 1 1))
 
-  (defun local-date-last-day-of-year (date)
-    "Returns December 31 in DATE's calendar year."
-    (%make-local-date (local-date-year date) 12 31))
+(defun local-date-last-day-of-year (date)
+  "Returns December 31 in DATE's calendar year."
+  (%make-local-date (local-date-year date) 12 31))
 
-  (defun %iso-weekday-number-from-symbol (day-of-week)
-    "Returns DAY-OF-WEEK's ISO number, accepting :MONDAY through :SUNDAY."
-    (ecase day-of-week
-      (:monday 1)
-      (:tuesday 2)
-      (:wednesday 3)
-      (:thursday 4)
-      (:friday 5)
-      (:saturday 6)
-      (:sunday 7)))
+(defun %iso-weekday-number-from-symbol (day-of-week)
+  "Returns DAY-OF-WEEK's ISO number, accepting :MONDAY through :SUNDAY."
+  (ecase day-of-week
+    (:monday 1)
+    (:tuesday 2)
+    (:wednesday 3)
+    (:thursday 4)
+    (:friday 5)
+    (:saturday 6)
+    (:sunday 7)))
 
-  (defun local-date-next-or-same (date day-of-week)
-    "Returns DATE or the next DATE whose weekday is DAY-OF-WEEK."
-    (local-date-plus-days
-      date
-      (mod
-        (- (%iso-weekday-number-from-symbol day-of-week) (%iso-weekday-number date))
-        7)))
+(defun local-date-next-or-same (date day-of-week)
+  "Returns DATE or the next DATE whose weekday is DAY-OF-WEEK."
+  (local-date-plus-days
+    date
+    (mod
+      (- (%iso-weekday-number-from-symbol day-of-week) (%iso-weekday-number date))
+      7)))
 
-  (defun local-date-next (date day-of-week)
-    "Returns the first DATE after DATE whose weekday is DAY-OF-WEEK."
-    (let ((result (local-date-next-or-same date day-of-week)))
-      (if (local-date= result date)
-          (local-date-plus-days date 7)
-          result)))
+(defun local-date-next (date day-of-week)
+  "Returns the first DATE after DATE whose weekday is DAY-OF-WEEK."
+  (let ((result (local-date-next-or-same date day-of-week)))
+    (if (local-date= result date) (local-date-plus-days date 7)
+      result)))
 
-  (defun local-date-previous-or-same (date day-of-week)
-    "Returns DATE or the preceding DATE whose weekday is DAY-OF-WEEK."
-    (local-date-minus-days
-      date
-      (mod
-        (- (%iso-weekday-number date) (%iso-weekday-number-from-symbol day-of-week))
-        7)))
+(defun local-date-previous-or-same (date day-of-week)
+  "Returns DATE or the preceding DATE whose weekday is DAY-OF-WEEK."
+  (local-date-minus-days
+    date
+    (mod
+      (- (%iso-weekday-number date) (%iso-weekday-number-from-symbol day-of-week))
+      7)))
 
+(progn
   (defun local-date-previous (date day-of-week)
     "Returns the first DATE before DATE whose weekday is DAY-OF-WEEK."
     (let ((result (local-date-previous-or-same date day-of-week)))
-      (if (local-date= result date)
-          (local-date-minus-days date 7)
-          result)))
+      (if (local-date= result date) (local-date-minus-days date 7)
+        result)))
+  (defun local-date-first-day-of-next-month (date)
+    "Returns the first calendar day in the month after DATE."
+    (local-date-first-day-of-month (local-date-plus-months date 1)))
+  (defun local-date-first-day-of-next-year (date)
+    "Returns January 1 in the calendar year after DATE."
+    (local-date-first-day-of-year (local-date-plus-years date 1)))
+  (defun local-date-first-in-month (date day-of-week)
+    "Returns the first DAY-OF-WEEK in the calendar month of DATE."
+    (local-date-next-or-same (local-date-first-day-of-month date) day-of-week))
+  (defun local-date-last-in-month (date day-of-week)
+    "Returns the final DAY-OF-WEEK in the calendar month of DATE."
+    (local-date-previous-or-same (local-date-last-day-of-month date) day-of-week))
+  (defun local-date-day-of-week-in-month (date ordinal day-of-week)
+    "Returns the ORDINAL occurrence of DAY-OF-WEEK relative to DATE month.
+
+Positive ordinals count from the first matching weekday and negative ordinals
+count from the last; results may fall outside DATE month."
+    (%iso-weekday-number-from-symbol day-of-week)
+    (unless (and (integerp ordinal) (not (zerop ordinal)))
+      (error
+        (quote invalid-date)
+        :year
+        (local-date-year date)
+        :month
+        (local-date-month date)
+        :day
+        ordinal))
+    (if (plusp ordinal) (local-date-plus-days
+        (local-date-first-in-month date day-of-week)
+        (* 7 (1- ordinal)))
+      (local-date-minus-days
+        (local-date-last-in-month date day-of-week)
+        (* 7 (1- (- ordinal)))))))

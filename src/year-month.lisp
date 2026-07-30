@@ -24,6 +24,10 @@
   "Drops DATE's day-of-month and returns its YEAR-MONTH."
   (%make-year-month (local-date-year date) (local-date-month date)))
 
+(defun year-month-now (&key (zone (zone-offset-utc)) (clock (current-clock)))
+  "Returns the current YEAR-MONTH in ZONE according to CLOCK."
+  (year-month-from-local-date (local-date-now :zone zone :clock clock)))
+
 (defun year-month-to-proleptic-month (value)
   "Returns VALUE's signed month index, where year 0 / January is 0."
   (+ (* (year-month-year value) 12) (1- (year-month-month value))))
@@ -36,8 +40,21 @@
     (%make-year-month year (1+ month-zero))))
 
 (defun year-month-length-of-month (value)
-  "Returns the number of days in VALUE's calendar month."
+  "Returns the number of days in the calendar month of VALUE."
   (length-of-month (year-month-year value) (year-month-month value)))
+
+(defun year-month-leap-year-p (value)
+  "Returns true when VALUE occurs in a proleptic Gregorian leap year."
+  (leap-year-p (year-month-year value)))
+
+(defun year-month-length-of-year (value)
+  "Returns the number of days in VALUE's calendar year."
+  (if (year-month-leap-year-p value) 366 365))
+
+(defun year-month-valid-day-p (value day)
+  "Returns true when integral DAY occurs in the calendar month of VALUE."
+  (and (integerp day)
+       (<= 1 day (year-month-length-of-month value))))
 
 (defun year-month-at-day (value day)
   "Combines VALUE with DAY, signaling INVALID-DATE when it is not valid."

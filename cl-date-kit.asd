@@ -28,15 +28,23 @@
     (:file "clock")
     (:file "tzif")
     (:file "zone-offset")
-    (:file "posix-tz")
-    (:file "zone")
-    (:file "offset-time")
-    (:file "zoned-date-time")
-    (:file "offset-date-time")
+     (:file "posix-tz")
+     (:file "zone")
+     (:file "zone-local")
+     (:file "offset-time")
+   (:file "zoned-date-time")
+   (:file "rrule")
+   (:file "rrule-codec")
+   (:file "rrule-candidates")
+   (:file "rrule-set")
+   (:file "offset-date-time")
     (:file "iso8601-date")
     (:file "iso8601")
-    (:file "pattern"))
-  :in-order-to ((test-op (test-op "cl-date-kit/test"))))
+    (:file "iso8601-amounts")
+    (:file "locale")
+    (:file "pattern")
+    (:file "pattern-parser"))
+  :in-order-to ((asdf:test-op (asdf:test-op "cl-date-kit/test"))))
 
 ;;; The test system is `cl-date-kit/test` (singular, slash-separated) with
 ;;; :pathname "t". It is NOT `cl-date-kit-test`.
@@ -49,7 +57,7 @@
   :homepage "https://github.com/nerima-lisp/cl-date-kit"
   :bug-tracker "https://github.com/nerima-lisp/cl-date-kit/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-date-kit.git")
-  :depends-on ("cl-date-kit" "cl-weave")
+  :depends-on ("cl-date-kit" (:version "cl-weave" "1.0.1"))
   :pathname "t"
   :serial t
   :components ((:file "package")
@@ -65,13 +73,16 @@
     (:file "instant-test")
     (:file "interval-test")
     (:file "clock-test")
-    (:file "zone-test")
-    (:file "zoned-date-time-test")
-    (:file "offset-date-time-test")
+   (:file "zone-test")
+   (:file "zoned-date-time-test")
+   (:file "rrule-test")
+   (:file "rrule-set-test")
+   (:file "offset-date-time-test")
     (:file "offset-time-test")
     (:file "iso8601-test")
+    (:file "locale-test")
     (:file "pattern-test"))
-  :perform (test-op
+  :perform (asdf:test-op
     (operation component)
     (declare (ignore operation component))
     (unless (funcall (symbol-function (find-symbol "RUN-TESTS" "CL-DATE-KIT/TEST")))

@@ -9,18 +9,29 @@
 ;;;; the TZDIR / /usr/share/zoneinfo search path that finds these files.
 (in-package #:cl-date-kit)
 
-(defstruct tzif-type
-  (utc-offset 0 :type integer :read-only t)
-  (dst-p nil :type boolean :read-only t))
+(defstruct tzif-type (utc-offset 0 :type integer :read-only t)
+  (dst-p nil :type boolean :read-only t)
+  (abbreviation-index 0 :type integer :read-only t)
+  (offset-cache nil))
 
 (defstruct tzif-data
   (transition-times #() :type simple-vector :read-only t)
   (transition-types #() :type simple-vector :read-only t)
   (initial-type nil :type tzif-type :read-only t)
+  (abbreviation-table "" :type string :read-only t)
   (posix-tz-string nil :type (or null string) :read-only t))
 
-(defstruct %tzif-header
-  (version 0) (isutcnt 0) (isstdcnt 0) (leapcnt 0) (timecnt 0) (typecnt 0) (charcnt 0))
+(progn
+  (defstruct %tzif-header
+    (version 0) (isutcnt 0) (isstdcnt 0) (leapcnt 0) (timecnt 0) (typecnt 0) (charcnt 0))
+  (defconstant +maximum-tzif-file-size+ (* 16 1024 1024)
+    "Maximum TZif input size in octets.")
+  (defconstant +maximum-tzif-time-count+ 1000000
+    "Maximum number of TZif transition timestamps in one block.")
+  (defconstant +maximum-tzif-leap-count+ 10000
+    "Maximum number of TZif leap-second records in one block.")
+  (defconstant +maximum-tzif-character-count+ (* 1024 1024)
+    "Maximum number of TZif abbreviation bytes in one block."))
 
 (defun %read-u8 (bytes offset) (aref bytes offset))
 
@@ -61,78 +72,87 @@
    :charcnt (%read-u32-be bytes (+ offset 40))))
 
 (defun %parse-tzif-block (bytes offset header time-width path)
-  "Parses one TZif data block (the part after its own 44-byte header) at
-OFFSET, using TIME-WIDTH-byte transition times (4 for the legacy v1 block, 8
-for the v2+ block). Returns (values transition-times transition-types
-initial-type end-offset), where TRANSITION-TYPES\\[i\\] is the regime that
-starts at TRANSITION-TIMES\\[i\\] and INITIAL-TYPE is the regime in force
-before the first transition."
+  "Parses one TZif data block and returns its transitions, types, initial type,
+abbreviation table, and end offset."
   (let* ((timecnt (%tzif-header-timecnt header))
          (typecnt (%tzif-header-typecnt header))
          (charcnt (%tzif-header-charcnt header))
          (isutcnt (%tzif-header-isutcnt header))
          (isstdcnt (%tzif-header-isstdcnt header))
          (leapcnt (%tzif-header-leapcnt header))
-         (block-size (+ (* timecnt time-width)
-                        timecnt
-                        (* typecnt 6)
-                        charcnt
-                        (* leapcnt (+ time-width 4))
-                        isstdcnt
-                        isutcnt))
-         (end (+ offset block-size))
-         (read-time (if (= time-width 4) #'%read-s32-be #'%read-s64-be)))
-    ;; Validate every count before allocating or indexing into the data block.
+         (read-time (if (= time-width 4)
+                        (function %read-s32-be)
+                        (function %read-s64-be))))
     (unless (<= 1 typecnt 256)
-      (error 'malformed-tzif :path path :reason "type count must be between 1 and 256"))
+      (error (quote malformed-tzif) :path path
+             :reason "type count must be between 1 and 256"))
+    (unless (<= timecnt +maximum-tzif-time-count+)
+      (error (quote malformed-tzif) :path path
+             :reason "transition count exceeds the maximum supported value"))
+    (unless (<= leapcnt +maximum-tzif-leap-count+)
+      (error (quote malformed-tzif) :path path
+             :reason "leap-second count exceeds the maximum supported value"))
+    (unless (<= charcnt +maximum-tzif-character-count+)
+      (error (quote malformed-tzif) :path path
+             :reason "abbreviation byte count exceeds the maximum supported value"))
     (unless (and (or (zerop isstdcnt) (= isstdcnt typecnt))
                  (or (zerop isutcnt) (= isutcnt typecnt)))
-      (error 'malformed-tzif
-             :path path
+      (error (quote malformed-tzif) :path path
              :reason "standard and UT indicator counts must be zero or match the type count"))
-    (unless (<= end (length bytes))
-      (error 'malformed-tzif :path path :reason "data block runs past end of file"))
-    (let ((transition-times (make-array timecnt))
-          (type-indices (make-array timecnt))
-          (types (make-array typecnt))
-          (pos offset))
-      (dotimes (i timecnt)
-        (let ((transition-time (funcall read-time bytes pos)))
-          (when (and (plusp i)
-                     (<= transition-time (aref transition-times (1- i))))
-            (error 'malformed-tzif
-                   :path path
-                   :reason "transition times must be strictly increasing"))
-          (setf (aref transition-times i) transition-time))
-        (incf pos time-width))
-      (dotimes (i timecnt)
-        (let ((type-index (%read-u8 bytes pos)))
-          (unless (< type-index typecnt)
-            (error 'malformed-tzif
-                   :path path
-                   :reason "transition type index is outside the type table"))
-          (setf (aref type-indices i) type-index))
-        (incf pos))
-      (dotimes (i typecnt)
-        ;; ttinfo is 6 bytes: 4-byte UTC offset, 1-byte DST flag, 1-byte index
-        ;; into the abbreviation-string table (which CL-DATE-KIT does not use).
-        (let ((dst-flag (%read-u8 bytes (+ pos 4))))
-          (unless (<= dst-flag 1)
-            (error 'malformed-tzif :path path :reason "DST flag must be zero or one"))
-          (setf (aref types i)
-                (make-tzif-type :utc-offset (%read-s32-be bytes pos)
-                                :dst-p (plusp dst-flag))))
-        (incf pos 6))
-      (incf pos charcnt)                      ; abbreviation strings
-      (incf pos (* leapcnt (+ time-width 4))) ; leap-second records
-      (incf pos isstdcnt)                     ; standard/wall indicators
-      (incf pos isutcnt)                      ; UT/local indicators
-      (let ((initial-type
-              (or (find-if (lambda (ty) (not (tzif-type-dst-p ty))) types)
-                  (aref types 0)))
-            (transition-types
-              (map 'simple-vector (lambda (i) (aref types i)) type-indices)))
-        (values transition-times transition-types initial-type pos)))))
+    (let* ((block-size (+ (* timecnt time-width) timecnt (* typecnt 6) charcnt
+                          (* leapcnt (+ time-width 4)) isstdcnt isutcnt))
+           (end (+ offset block-size)))
+      (unless (<= end (length bytes))
+        (error (quote malformed-tzif) :path path
+               :reason "data block runs past end of file"))
+      (let ((transition-times (make-array timecnt))
+            (type-indices (make-array timecnt))
+            (types (make-array typecnt))
+            (pos offset))
+        (dotimes (i timecnt)
+          (let ((transition-time (funcall read-time bytes pos)))
+            (when (and (plusp i)
+                       (<= transition-time (aref transition-times (1- i))))
+              (error (quote malformed-tzif) :path path
+                     :reason "transition times must be strictly increasing"))
+            (setf (aref transition-times i) transition-time))
+          (incf pos time-width))
+        (dotimes (i timecnt)
+          (let ((index (%read-u8 bytes pos)))
+            (unless (< index typecnt)
+              (error (quote malformed-tzif) :path path
+                     :reason "transition type index is out of range"))
+            (setf (aref type-indices i) index))
+          (incf pos))
+        (dotimes (i typecnt)
+          (let ((dst-flag (%read-u8 bytes (+ pos 4))))
+            (unless (<= dst-flag 1)
+              (error (quote malformed-tzif) :path path
+                     :reason "DST flag must be zero or one"))
+            (setf (aref types i)
+                  (make-tzif-type :utc-offset (%read-s32-be bytes pos)
+                                  :dst-p (plusp dst-flag)
+                                  :abbreviation-index (%read-u8 bytes (+ pos 5)))))
+          (incf pos 6))
+        (let ((abbreviation-table
+                (map (quote string) (quote code-char)
+                     (subseq bytes pos (+ pos charcnt)))))
+          (loop for type across types
+                for index = (tzif-type-abbreviation-index type)
+                unless (and (< index charcnt)
+                            (position #\Null abbreviation-table :start index))
+                  do (error (quote malformed-tzif) :path path
+                            :reason "abbreviation index must select a NUL-terminated designation"))
+          (let ((transition-types (make-array timecnt)))
+            (dotimes (index timecnt)
+              (setf (aref transition-types index)
+                    (aref types (aref type-indices index))))
+            (values transition-times
+                    transition-types
+                    (or (find-if-not (function tzif-type-dst-p) types)
+                        (aref types 0))
+                    abbreviation-table
+                    end)))))))
 
 (defun %parse-posix-tz-string (bytes offset path)
   "Parses the newline-framed v2+ POSIX TZ footer at OFFSET.
@@ -159,24 +179,17 @@ An empty footer denotes that no future rule is supplied."
 
 (progn
   (defun %read-file-bytes (path)
-    (with-open-file (stream path :element-type (quote (unsigned-byte 8)))
-      (let ((buffer (make-array (file-length stream)
-                                :element-type (quote (unsigned-byte 8)))))
-        (read-sequence buffer stream)
-        buffer)))
+    (with-open-file (stream path :element-type '(unsigned-byte 8))
+      (let ((file-size (file-length stream)))
+        (when (> file-size +maximum-tzif-file-size+) (error 'malformed-tzif :path path :reason "TZif file exceeds the maximum supported size"))
+        (let ((buffer (make-array file-size :element-type '(unsigned-byte 8)))) (read-sequence buffer stream) buffer))))
   (defun parse-tzif-file (path)
     "Parses the TZif file at PATH (RFC 8536, versions 1-3) into a TZIF-DATA."
-    (let* ((bytes (%read-file-bytes path))
-           (v1-header (%parse-tzif-header bytes 0 path)))
-      (multiple-value-bind (v1-times v1-types v1-initial v1-end)
-          (%parse-tzif-block bytes 44 v1-header 4 path)
+    (let* ((bytes (%read-file-bytes path)) (v1-header (%parse-tzif-header bytes 0 path)))
+      (multiple-value-bind (v1-times v1-types v1-initial v1-abbreviations v1-end) (%parse-tzif-block bytes 44 v1-header 4 path)
         (if (zerop (%tzif-header-version v1-header))
-            (make-tzif-data :transition-times v1-times :transition-types v1-types
-                             :initial-type v1-initial :posix-tz-string nil)
+            (make-tzif-data :transition-times v1-times :transition-types v1-types :initial-type v1-initial :abbreviation-table v1-abbreviations :posix-tz-string nil)
             (let ((v2-header (%parse-tzif-header bytes v1-end path)))
-              (multiple-value-bind (v2-times v2-types v2-initial v2-end)
-                  (%parse-tzif-block bytes (+ v1-end 44) v2-header 8 path)
-                (make-tzif-data :transition-times v2-times :transition-types v2-types
-                                 :initial-type v2-initial
-                                 :posix-tz-string
-                                 (%parse-posix-tz-string bytes v2-end path)))))))))
+              (multiple-value-bind (v2-times v2-types v2-initial v2-abbreviations v2-end) (%parse-tzif-block bytes (+ v1-end 44) v2-header 8 path)
+                (make-tzif-data :transition-times v2-times :transition-types v2-types :initial-type v2-initial :abbreviation-table v2-abbreviations
+                                :posix-tz-string (%parse-posix-tz-string bytes v2-end path)))))))))

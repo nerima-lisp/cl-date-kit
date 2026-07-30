@@ -43,7 +43,7 @@ Two details are easy to get backwards when implementing this:
 
 ## Detecting daylight-saving gaps and overlaps
 
-`%CLASSIFY-LOCAL-DATE-TIME` in `zone.lisp` is the one function every
+`%CLASSIFY-LOCAL-DATE-TIME` in `zone-local.lisp` is the one function every
 gap/overlap-sensitive operation (`POSSIBLE-OFFSETS-FOR-LOCAL-DATE-TIME`,
 `RESOLVE-LOCAL-DATE-TIME`, and transitively `ZONED-DATE-TIME-OF-LOCAL`) goes
 through, so there is exactly one implementation of the classification logic

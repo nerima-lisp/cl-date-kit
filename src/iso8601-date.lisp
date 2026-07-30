@@ -11,14 +11,7 @@
     (error 'date-time-parse-error :string string :expected expected))
   (parse-integer string :start start :end end))
 
-(defun %parse-decimal (string start end expected)
-  "Parses a possibly-fractional decimal number in STRING[START,END) as a rational."
-  (let ((dot (position #\. string :start start :end end)))
-    (if dot (+
-        (%parse-fixed-integer string start dot expected)
-        (let ((frac (subseq string (1+ dot) end)))
-          (/ (%parse-fixed-integer frac 0 (length frac) expected) (expt 10 (length frac)))))
-      (%parse-fixed-integer string start end expected))))
+(defun %parse-decimal (string start end expected) "Parses a possibly-fractional decimal number in STRING[START,END) as a rational." (let ((decimal-separator (position-if (lambda (character) (member character '(#\. #\,))) string :start start :end end))) (if decimal-separator (let ((next-separator (position-if (lambda (character) (member character '(#\. #\,))) string :start (1+ decimal-separator) :end end))) (when next-separator (error 'date-time-parse-error :string string :expected expected)) (+ (%parse-fixed-integer string start decimal-separator expected) (let ((fraction (subseq string (1+ decimal-separator) end))) (/ (%parse-fixed-integer fraction 0 (length fraction) expected) (expt 10 (length fraction)))))) (%parse-fixed-integer string start end expected))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro with-date-time-parse-error ((string expected) &body body)

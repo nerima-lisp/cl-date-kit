@@ -4,9 +4,9 @@
 (define-condition cl-date-kit-error (error)
   ()
   (:documentation
-    "Base condition for every error CL-DATE-KIT signals. Catch
-this to handle any failure from this library without naming each specific
-condition."))
+    "Base condition for domain validation errors signaled by CL-DATE-KIT. Catch
+this to handle invalid temporal values and format violations without naming
+each specific condition."))
 
 (define-condition invalid-date (cl-date-kit-error)
   ((year :initarg :year :reader invalid-date-year)
@@ -25,14 +25,25 @@ condition."))
 the year/month/day (or year/day-of-year) combination does not name a real
 calendar date, e.g. a month outside 1-12 or a day past the end of its month."))
 
-(define-condition invalid-day-of-week (cl-date-kit-error) ((value :initarg :value :reader invalid-day-of-week-value)) (:report (lambda (condition stream) (format stream "~S is not a valid ISO weekday or integral weekday amount." (invalid-day-of-week-value condition)))) (:documentation "Signaled by the DAY-OF-WEEK value APIs when a weekday keyword, ISO weekday number, or arithmetic amount is invalid."))
+(define-condition invalid-day-of-week (cl-date-kit-error)
+  ((value :initarg :value :reader invalid-day-of-week-value))
+  (:report
+    (lambda (condition stream)
+      (format
+        stream
+        "~S is not a valid ISO weekday or integral weekday amount."
+        (invalid-day-of-week-value condition))))
+  (:documentation
+    "Signaled by the DAY-OF-WEEK value APIs when a weekday keyword, ISO weekday number, or arithmetic amount is invalid."))
 
 (define-condition invalid-month (cl-date-kit-error)
   ((value :initarg :value :reader invalid-month-value))
   (:report
     (lambda (condition stream)
-      (format stream "~S is not a valid ISO month keyword or number."
-              (invalid-month-value condition))))
+      (format
+        stream
+        "~S is not a valid ISO month keyword or number."
+        (invalid-month-value condition))))
   (:documentation
     "Signaled by the MONTH value APIs when a month keyword, ISO month number,
 or arithmetic amount is invalid."))
@@ -195,6 +206,27 @@ clock jumped past it and no offset makes it a real instant."))
 :STRICT when the local date-time falls in a fall-back overlap, i.e. the wall
 clock repeated it under two different offsets."))
 
+(define-condition invalid-zoned-date-time-offset (cl-date-kit-error)
+  ((local-date-time
+      :initarg
+      :local-date-time
+      :reader
+      invalid-zoned-date-time-offset-local-date-time)
+    (offset :initarg :offset :reader invalid-zoned-date-time-offset-offset)
+    (zone :initarg :zone :reader invalid-zoned-date-time-offset-zone))
+  (:report
+    (lambda (condition stream)
+      (format
+        stream
+        "~A at offset ~A is not valid in ~A."
+        (invalid-zoned-date-time-offset-local-date-time condition)
+        (invalid-zoned-date-time-offset-offset condition)
+        (invalid-zoned-date-time-offset-zone condition))))
+  (:documentation
+    "Signaled by ZONED-DATE-TIME-OF-STRICT when OFFSET is not a valid
+resolution of LOCAL-DATE-TIME in ZONE, including gaps and invalid overlap
+offsets."))
+
 (define-condition invalid-zone-offset (cl-date-kit-error)
   ((hours :initarg :hours :reader invalid-zone-offset-hours)
     (minutes :initarg :minutes :reader invalid-zone-offset-minutes)
@@ -221,3 +253,55 @@ clock repeated it under two different offsets."))
         (invalid-interval-start condition)
         (invalid-interval-end condition))))
   (:documentation "Signaled when an interval end precedes its start."))
+
+(progn
+  (define-condition invalid-duration-division (cl-date-kit-error)
+    ((duration :initarg :duration :reader invalid-duration-division-duration)
+      (divisor :initarg :divisor :reader invalid-duration-division-divisor))
+    (:report
+      (lambda (condition stream)
+        (format
+          stream
+          "Cannot divide duration ~S by ~S."
+          (invalid-duration-division-duration condition)
+          (invalid-duration-division-divisor condition))))
+    (:documentation "Signaled by DURATION-DIVIDED-BY when DIVISOR is zero."))
+  (define-condition instant-precision-loss (cl-date-kit-error)
+    ((instant :initarg :instant :reader instant-precision-loss-instant)
+      (representation
+        :initarg
+        :representation
+        :reader
+        instant-precision-loss-representation))
+    (:report
+      (lambda (condition stream)
+        (format
+          stream
+          "Cannot represent instant ~S as ~S without losing precision."
+          (instant-precision-loss-instant condition)
+          (instant-precision-loss-representation condition))))
+    (:documentation
+      "Signaled when converting an INSTANT would discard nonzero precision."))
+  (define-condition invalid-rrule (cl-date-kit-error)
+    ((reason :initarg :reason :reader invalid-rrule-reason)
+      (value :initarg :value :reader invalid-rrule-value))
+    (:report
+      (lambda (condition stream)
+        (format
+          stream
+          "Invalid RFC 5545 recurrence rule: ~A~@[ (~S)~]."
+          (invalid-rrule-reason condition)
+          (invalid-rrule-value condition))))
+    (:documentation "Signaled when an RRULE or recurrence-set value is invalid.")))
+
+(export
+  (quote
+    (invalid-duration-division
+      invalid-duration-division-duration
+      invalid-duration-division-divisor
+      instant-precision-loss
+      instant-precision-loss-instant
+      instant-precision-loss-representation
+      invalid-rrule
+      invalid-rrule-reason
+      invalid-rrule-value)))

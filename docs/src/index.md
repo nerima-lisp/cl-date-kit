@@ -12,7 +12,8 @@ zone database and daylight-saving disambiguation -- right instead.
 
 ## Layers
 
-cl-date-kit is eighteen implementation files, each built only on the ones below it:
+cl-date-kit is organized as a serially loaded implementation stack; each layer
+is built only on the ones below it:
 
 1. **Duration** (`src/duration.lisp`) -- an exact elapsed time (seconds +
    nanoseconds). java.time's `Duration`, Rust's `Duration`, Go's
@@ -34,10 +35,12 @@ cl-date-kit is eighteen implementation files, each built only on the ones below 
    from, so tests can inject a fixed instant. java.time's `Clock`.
 7. **TZif** (`src/tzif.lisp`) -- a from-scratch reader for the IANA time
    zone database's on-disk binary format (RFC 8536).
-8. **Zone** (`src/zone.lisp`) -- `ZONE-OFFSET` (a fixed UTC offset) and
-   `TIME-ZONE` (an IANA zone backed by TZif's parsed rules), plus resolving a
-   wall-clock `LOCAL-DATE-TIME` to one, zero, or two offsets depending on
-   whether it falls in a daylight-saving gap or overlap.
+8. **Zone** (`src/zone.lisp`, `src/zone-local.lisp`) -- `ZONE-OFFSET` (a
+   fixed UTC offset) and `TIME-ZONE` (an IANA zone backed by TZif's parsed
+   rules). The former owns zone data and instant-time lookup; the latter
+   converts local fields and resolves a wall-clock `LOCAL-DATE-TIME` to one,
+   zero, or two offsets depending on whether it falls in a daylight-saving gap
+   or overlap.
 9. **ZonedDateTime** (`src/zoned-date-time.lisp`) -- a `LOCAL-DATE-TIME`
    paired with a resolved `ZONE-OFFSET`: the "real-world timestamp" type.
 10. **OffsetDateTime** (`src/offset-date-time.lisp`) -- a `LOCAL-DATE-TIME`

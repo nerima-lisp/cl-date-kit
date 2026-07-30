@@ -15,12 +15,15 @@ that a sibling repository's history never breaks a consumer's build.
 
 ## Via ASDF directly
 
-Clone this repository somewhere `asdf:*central-registry*` or
-`CL_SOURCE_REGISTRY` can find it, then:
+Clone this repository, then add its absolute path to ASDF's central registry
+before loading the system:
 
 ```lisp
+(push #P"/absolute/path/to/cl-date-kit/" asdf:*central-registry*)
 (asdf:load-system "cl-date-kit")
 ```
+
+Alternatively, configure `CL_SOURCE_REGISTRY` to find the checkout.
 
 `cl-date-kit` has no ASDF dependencies (`:depends-on ()`); the only runtime
 requirement beyond SBCL is a readable IANA time zone database, which is

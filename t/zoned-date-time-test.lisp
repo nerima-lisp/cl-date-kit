@@ -13,6 +13,20 @@
       (expect (zone-offset-total-seconds (zoned-date-time-offset after))
               :to-be -14400)))
 
+  (it "uses elapsed time across the DST fall-back overlap"
+    (let* ((new-york (find-time-zone "America/New_York"))
+           (before (zoned-date-time-of-local
+                    (local-date-time-of 2024 11 3 1 59 59 999500000)
+                    new-york
+                    :preferred-offset (zone-offset-of-hours -4)))
+           (after (zoned-date-time-plus-millis before 1)))
+      (expect (local-date-time=
+               (zoned-date-time-local after)
+               (local-date-time-of 2024 11 3 1 0 0 500000))
+              :to-be-truthy)
+      (expect (zone-offset-total-seconds (zoned-date-time-offset after))
+              :to-be -18000)))
+
   (it "reverses every fixed unit"
     (let* ((zone (find-time-zone "UTC"))
            (value (zoned-date-time-of-local
@@ -54,21 +68,29 @@
   (it
     "ZONED-DATE-TIME-OF-LOCAL resolves normal local time"
     (let* ((ldt (local-date-time-of 2024 6 15 12 0 0))
-           (zdt (zoned-date-time-of-local ldt (find-time-zone "America/New_York"))))
+           (zdt (zoned-date-time-of-local
+                 ldt (find-time-zone "America/New_York"))))
       (expect (local-date-time= (zoned-date-time-local zdt) ldt) :to-be-truthy)
-      (expect (zone-offset-total-seconds (zoned-date-time-offset zdt)) :to-be -14400)))
+      (expect (zone-offset-total-seconds (zoned-date-time-offset zdt))
+              :to-be -14400)))
   (it
     "ZONED-DATE-TIME-OF-INSTANT is the inverse for a normal instant"
-    (let* ((zdt
-          (zoned-date-time-of-local
-            (local-date-time-of 2024 6 15 12 0 0)
-            (find-time-zone "America/New_York")))
+    (let* ((zone (find-time-zone "America/New_York"))
+           (zdt
+             (zoned-date-time-of-local
+              (local-date-time-of 2024 6 15 12 0 0 123456789)
+              zone))
            (instant (zoned-date-time-to-instant zdt))
-           (round-trip
-          (zoned-date-time-of-instant instant (find-time-zone "America/New_York"))))
+           (round-trip (zoned-date-time-of-instant instant zone))
+           (direct-local (local-date-time-of-instant instant zone)))
       (expect
         (local-date-time=
           (zoned-date-time-local round-trip)
+          (zoned-date-time-local zdt))
+        :to-be-truthy)
+      (expect
+        (local-date-time=
+          direct-local
           (zoned-date-time-local zdt))
         :to-be-truthy)))
   (it
@@ -174,30 +196,50 @@
     "retains a later overlap offset when adding a zero period"
     (let* ((zone (find-time-zone "America/New_York"))
            (original
-          (zoned-date-time-of-local
-            (local-date-time-of 2024 11 3 1 30 0)
-            zone
-            :disambiguation
-            :later))
+            (zoned-date-time-of-local
+             (local-date-time-of 2024 11 3 1 30 0)
+             zone
+             :disambiguation
+             :later))
            (result (zoned-date-time-plus-period original (make-period))))
       (expect (zoned-date-time= result original) :to-be-truthy)
       (expect
-        (zone-offset-total-seconds (zoned-date-time-offset result))
-        :to-be
-        -18000)))
+       (zone-offset-total-seconds (zoned-date-time-offset result))
+       :to-be
+       -18000)))
   (it
     "with-zone-same-local preserves fields and re-resolves the instant"
     (let* ((new-york (find-time-zone "America/New_York"))
            (tokyo (find-time-zone "Asia/Tokyo"))
            (original
-          (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) new-york))
+            (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) new-york))
            (result (zoned-date-time-with-zone-same-local original tokyo)))
       (expect
-        (local-date-time=
-          (zoned-date-time-local result)
-          (zoned-date-time-local original))
-        :to-be-truthy)
-      (expect (zoned-date-time< result original) :to-be-truthy)))) (describe
+       (local-date-time=
+        (zoned-date-time-local result)
+        (zoned-date-time-local original))
+       :to-be-truthy)
+      (expect (zoned-date-time< result original) :to-be-truthy)))
+  (it
+    "with-zone-same-local delegates overlap resolution options"
+    (let* ((new-york (find-time-zone "America/New_York"))
+           (utc (find-time-zone "UTC"))
+           (original
+            (zoned-date-time-of-local
+             (local-date-time-of 2024 11 3 1 30 0)
+             utc))
+           (preferred
+            (zoned-date-time-with-zone-same-local
+             original
+             new-york
+             :preferred-offset (zone-offset-of-hours -5))))
+      (expect
+       (zone-offset-total-seconds (zoned-date-time-offset preferred))
+       :to-be
+       -18000)
+      (signals ambiguous-local-time
+       (zoned-date-time-with-zone-same-local
+        original new-york :disambiguation :strict))))) (describe
   "fixed-unit truncation"
   (it
    "retains a valid later offset in a daylight-saving overlap"
@@ -318,3 +360,207 @@
              (list 2024 11 3 1 30 45 123456789))
      (expect (zone-offset-total-seconds (zoned-date-time-offset value))
              :to-be -18000)))))
+
+(describe "ZonedDateTime epoch-second conversions" (it "round-trips absolute fields through UTC and New York DST" (dolist (case (list (list -1 999999999 (find-time-zone "UTC")) (list 1710055800 123456789 (find-time-zone "America/New_York")))) (destructuring-bind (seconds nanosecond zone) case (let ((value (cl-date-kit:zoned-date-time-of-epoch-second seconds nanosecond zone))) (expect (cl-date-kit:zoned-date-time-to-epoch-second value) :to-be seconds) (expect (zoned-date-time-nanosecond value) :to-be nanosecond) (expect (eq (zoned-date-time-zone value) zone) :to-be-truthy))))))
+
+(describe "ZONED-DATE-TIME overlap offset selectors"
+  (it "selects either instant without changing the local fields"
+    (let* ((zone (find-time-zone "America/New_York"))
+           (local (local-date-time-of 2024 11 3 1 30 0))
+           (later (zoned-date-time-of-local local zone :disambiguation :later))
+           (earlier (cl-date-kit:zoned-date-time-with-earlier-offset-at-overlap later))
+           (selected-later (cl-date-kit:zoned-date-time-with-later-offset-at-overlap earlier)))
+      (expect (zone-offset-total-seconds (zoned-date-time-offset earlier)) :to-be -14400)
+      (expect (zone-offset-total-seconds (zoned-date-time-offset selected-later)) :to-be -18000)
+      (expect (local-date-time= (zoned-date-time-local earlier) local) :to-be-truthy)
+      (expect (local-date-time= (zoned-date-time-local selected-later) local) :to-be-truthy)
+      (expect (instant< (zoned-date-time-to-instant earlier)
+                        (zoned-date-time-to-instant selected-later))
+              :to-be-truthy)))
+  (it "returns the original value outside an overlap"
+    (let* ((zone (find-time-zone "America/New_York"))
+           (value (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) zone)))
+      (expect (eq (cl-date-kit:zoned-date-time-with-earlier-offset-at-overlap value) value)
+              :to-be-truthy)
+      (expect (eq (cl-date-kit:zoned-date-time-with-later-offset-at-overlap value) value)
+              :to-be-truthy))))
+
+(describe
+  "ZONED-DATE-TIME-OF-STRICT"
+  (it
+    "constructs normal local times and round-trips their instant"
+    (let* ((zone (find-time-zone "America/New_York"))
+           (local (local-date-time-of 2024 6 15 12 0 0))
+           (value
+             (cl-date-kit:zoned-date-time-of-strict
+              local
+              (zone-offset-of-hours -4)
+              zone))
+           (round-trip
+             (zoned-date-time-of-instant
+              (zoned-date-time-to-instant value)
+              zone)))
+      (expect (local-date-time= (zoned-date-time-local value) local)
+              :to-be-truthy)
+      (expect (zone-offset-total-seconds (zoned-date-time-offset value))
+              :to-be -14400)
+      (expect (local-date-time= (zoned-date-time-local round-trip) local)
+              :to-be-truthy)
+      (expect (zone-offset-total-seconds (zoned-date-time-offset round-trip))
+              :to-be -14400)))
+  (it
+    "accepts both valid offsets in a New York overlap"
+    (let* ((zone (find-time-zone "America/New_York"))
+           (local (local-date-time-of 2024 11 3 1 30 0))
+           (earlier
+             (cl-date-kit:zoned-date-time-of-strict
+              local
+              (zone-offset-of-hours -4)
+              zone))
+           (later
+             (cl-date-kit:zoned-date-time-of-strict
+              local
+              (zone-offset-of-hours -5)
+              zone)))
+      (expect (zone-offset-total-seconds (zoned-date-time-offset earlier))
+              :to-be -14400)
+      (expect (zone-offset-total-seconds (zoned-date-time-offset later))
+              :to-be -18000)
+      (expect (instant< (zoned-date-time-to-instant earlier)
+                        (zoned-date-time-to-instant later))
+              :to-be-truthy)))
+  (it
+    "rejects mismatches and gaps"
+    (let ((zone (find-time-zone "America/New_York")))
+      (signals cl-date-kit:invalid-zoned-date-time-offset
+        (cl-date-kit:zoned-date-time-of-strict
+         (local-date-time-of 2024 6 15 12 0 0)
+         (zone-offset-of-hours -5)
+         zone))
+      (signals cl-date-kit:invalid-zoned-date-time-offset
+        (cl-date-kit:zoned-date-time-of-strict
+         (local-date-time-of 2024 3 10 2 30 0)
+         (zone-offset-of-hours -5)
+         zone))
+      (signals cl-date-kit:invalid-zoned-date-time-offset
+        (cl-date-kit:zoned-date-time-of-strict
+         (local-date-time-of 2024 11 3 1 30 0)
+         (zone-offset-of-hours -6)
+         zone))))
+  (it
+    "accepts a fixed-offset zone"
+    (let* ((zone (zone-offset-of-hours 9))
+           (local (local-date-time-of 2024 6 15 12 0 0))
+           (value
+             (cl-date-kit:zoned-date-time-of-strict
+              local
+              (zone-offset-of-hours 9)
+              zone)))
+      (expect (eq (zoned-date-time-zone value) zone) :to-be-truthy)
+      (expect (eq (zoned-date-time-offset value) zone) :to-be-truthy)
+      (expect (local-date-time= (zoned-date-time-local value) local)
+              :to-be-truthy))))
+
+(progn (progn (progn
+  (describe
+   "ZONED-DATE-TIME-TO-OFFSET-DATE-TIME"
+   (it
+    "snapshots local fields and resolved offsets, including both New York overlap choices"
+    (let* ((zone (find-time-zone "America/New_York"))
+           (overlap (local-date-time-of 2024 11 3 1 30 45 123456789))
+           (cases
+             (list
+              (list
+               (zoned-date-time-of-local
+                (local-date-time-of 2024 6 15 12 0 45 123456789)
+                zone)
+               -14400)
+              (list
+               (zoned-date-time-of-local
+                overlap
+                zone
+                :preferred-offset (zone-offset-of-hours -4))
+               -14400)
+              (list
+               (zoned-date-time-of-local
+                overlap
+                zone
+                :preferred-offset (zone-offset-of-hours -5))
+               -18000))))
+      (dolist (case cases)
+        (destructuring-bind (source expected-offset) case
+          (let ((snapshot
+                  (cl-date-kit:zoned-date-time-to-offset-date-time source)))
+            (expect
+             (local-date-time=
+              (cl-date-kit:offset-date-time-local-date-time snapshot)
+              (zoned-date-time-local source))
+             :to-be-truthy)
+            (expect
+             (zone-offset-total-seconds
+              (cl-date-kit:offset-date-time-offset snapshot))
+             :to-be expected-offset)
+            (expect
+             (instant=
+              (cl-date-kit:offset-date-time-to-instant snapshot)
+              (zoned-date-time-to-instant source))
+             :to-be-truthy)))))))
+
+  (describe
+   "ZONED-DATE-TIME-WITH-FIXED-OFFSET-ZONE"
+   (it
+    "preserves local fields, offset, and instant for normal and overlap values"
+    (let* ((zone (find-time-zone "America/New_York"))
+           (overlap (local-date-time-of 2024 11 3 1 30 45 123456789))
+           (cases
+             (list
+              (zoned-date-time-of-local
+               (local-date-time-of 2024 6 15 12 0 45 123456789)
+               zone)
+              (zoned-date-time-of-local
+               overlap
+               zone
+               :preferred-offset (zone-offset-of-hours -4))
+              (zoned-date-time-of-local
+               overlap
+               zone
+               :preferred-offset (zone-offset-of-hours -5)))))
+      (dolist (source cases)
+        (let ((fixed
+                (cl-date-kit:zoned-date-time-with-fixed-offset-zone source)))
+          (expect
+           (local-date-time=
+            (zoned-date-time-local fixed)
+            (zoned-date-time-local source))
+           :to-be-truthy)
+          (expect
+           (eq (zoned-date-time-zone fixed)
+               (zoned-date-time-offset fixed))
+           :to-be-truthy)
+          (expect
+           (zone-offset-total-seconds
+            (zoned-date-time-offset fixed))
+           :to-be
+           (zone-offset-total-seconds
+            (zoned-date-time-offset source)))
+          (expect
+           (instant=
+            (zoned-date-time-to-instant fixed)
+            (zoned-date-time-to-instant source))
+           :to-be-truthy))))))) (progn (describe "ZonedDateTime fixed-unit rounding" (it "re-resolves an ambiguous local result while retaining a valid offset" (let* ((zone (find-time-zone "America/New_York")) (source (zoned-date-time-of-local (local-date-time-of 2024 11 3 1 30 0) zone :preferred-offset (zone-offset-of-hours -5))) (rounded (zoned-date-time-rounded-to source :hours :mode :floor))) (expect (local-date-time-hour (zoned-date-time-local rounded)) :to-be 1) (expect (zone-offset-total-seconds (zoned-date-time-offset rounded)) :to-be -18000)))) (describe
+ "LOCAL-DATE-TIME-AT-ZONE"
+ (it
+  "forwards preferred offsets when resolving a DST overlap"
+  (let* ((zone (find-time-zone "America/New_York"))
+         (local (local-date-time-of 2024 11 3 1 30 0))
+         (resolved
+           (cl-date-kit:local-date-time-at-zone
+            local
+            zone
+            :preferred-offset (zone-offset-of-hours -5))))
+    (expect
+     (local-date-time= (zoned-date-time-local resolved) local)
+     :to-be-truthy)
+    (expect
+     (zone-offset-total-seconds (zoned-date-time-offset resolved))
+     :to-be -18000)))))) (describe "ZonedDateTime instant comparisons" (it "orders equal, earlier, and later instants for inclusive comparisons" (let* ((utc (find-time-zone "UTC")) (new-york (find-time-zone "America/New_York")) (value (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) utc)) (same-instant (zoned-date-time-of-instant (zoned-date-time-to-instant value) new-york)) (before (zoned-date-time-minus-seconds value 1)) (after (zoned-date-time-plus-seconds value 1))) (expect (zoned-date-time<= value same-instant) :to-be-truthy) (expect (zoned-date-time<= value after) :to-be-truthy) (expect (zoned-date-time<= value before) :to-be-falsy) (expect (zoned-date-time>= value same-instant) :to-be-truthy) (expect (zoned-date-time>= value before) :to-be-truthy) (expect (zoned-date-time>= value after) :to-be-falsy)))))
