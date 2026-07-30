@@ -168,20 +168,23 @@ is a streaming k-way merge, so schedules are not regenerated for each output."
     (if (null value-type)
         t
         (let* ((exdates (rrule-set-exdates rrule-set))
-               (exdate-index (and exdates (make-hash-table :test #'equal)))
+               (exdate-index (and exdates (make-hash-table :test #'eql)))
                (normalized-rdates (rrule-set-normalized-rdates rrule-set))
                (rdate-source
-  (and normalized-rdates
-       (%rrule-set-list-source normalized-rdates)))
-               (schedule-sources
-                 (loop for schedule in (rrule-set-schedules rrule-set)
-                       collect (%rrule-set-schedule-source schedule max-periods)))
+                 (and normalized-rdates
+                      (%rrule-set-list-source normalized-rdates)))
+               (schedules (rrule-set-schedules rrule-set))
+               (schedule-count (length schedules))
+               (source-count (+ schedule-count (if rdate-source 1 0)))
                (sources
-                 (coerce (if rdate-source
-                             (append schedule-sources (list rdate-source))
-                             schedule-sources)
-                         'vector))
-               (source-count (length sources)))
+                 (let ((sources (make-array source-count)))
+                   (loop for schedule in schedules
+                         for source-index from 0
+                         do (setf (aref sources source-index)
+                                  (%rrule-set-schedule-source schedule max-periods)))
+                   (when rdate-source
+                     (setf (aref sources schedule-count) rdate-source))
+                   sources)))
           (multiple-value-bind (lessp equalp)
               (%rrule-set-ordering-functions value-type)
             (dolist (exdate exdates)

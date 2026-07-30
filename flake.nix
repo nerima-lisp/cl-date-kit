@@ -9,7 +9,7 @@
     # cl-weave is a test-only dependency (see cl-date-kit.asd), so only its
     # source tree is needed here, not its flake outputs.
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.0.1";
+      url = "github:nerima-lisp/cl-weave/v1.1.0";
       flake = false;
     };
 
@@ -42,7 +42,8 @@
 
       # Keep the process-level deadlines consistent across checks and apps.
       testTimeoutSeconds = 120;
-      coverageTimeoutSeconds = 300;
+      # SB-COVER recompiles the whole project with instrumentation before tests.
+      coverageTimeoutSeconds = 900;
       benchmarkTimeoutSeconds = 120;
 
       # Single source of truth for the package version: the `:version` form
@@ -78,7 +79,7 @@
         rec {
           cl-weave = pkgs.sbcl.buildASDFSystem {
             pname = "cl-weave";
-            version = "1.0.1";
+          version = "1.1.0";
             src = inputs.cl-weave;
             systems = [ "cl-weave" ];
           };
@@ -171,13 +172,18 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           clWeave = self.packages.${system}.cl-weave;
-          isolatedLispCache = ''
+          clDateKit = self.packages.${system}.cl-date-kit;
+          isolatedLispEnvironment = ''
             temporary_home="$(mktemp -d "$TMPDIR/cl-date-kit.XXXXXX")"
             trap 'rm -rf "$temporary_home"' EXIT
             export HOME="$temporary_home/home"
             export XDG_CACHE_HOME="$temporary_home/cache"
+            mkdir -p "$HOME" "$XDG_CACHE_HOME"
+          '';
+          isolatedLispCache = ''
+            ${isolatedLispEnvironment}
             export ASDF_OUTPUT_TRANSLATIONS="(:output-translations (t \"$temporary_home/fasl/\" :implementation) :inherit-configuration)"
-            mkdir -p "$HOME" "$XDG_CACHE_HOME" "$temporary_home/fasl"
+            mkdir -p "$temporary_home/fasl"
           '';
           benchmarkScript = pkgs.writeText "cl-date-kit-benchmark.lisp" ''
             (require :asdf)
@@ -277,7 +283,9 @@
                       (symbol-function (find-symbol "MAP-RRULE-SET-OCCURRENCES" "CL-DATE-KIT")))
                      (zone (funcall find-time-zone "America/New_York"))
                      (local (funcall local-date-time-of 2024 6 15 12 0 0))
-                     (instant-string "2024-06-15T16:00:00Z")
+                     (canonical-instant-string "2024-06-15T16:00:00Z")
+                     (lowercase-instant-string "2024-06-15t16:00:00z")
+                     (offset-instant-string "2024-06-15T12:00:00-04:00")
                     (rrule-set
                       (funcall make-rrule-set
                                :schedules
@@ -292,8 +300,14 @@
                                         :count 8
                                         :by-month '(2 3)
                                         :by-month-day '(-1 1 15 31)))))
-                (benchmark-case "parse-instant" iterations warmup-iterations samples
-                                (lambda () (funcall parse-instant instant-string)))
+                (benchmark-case "runner-overhead/no-op" iterations warmup-iterations samples
+                                (lambda () nil))
+                (benchmark-case "parse-instant/canonical-utc" iterations warmup-iterations samples
+                                (lambda () (funcall parse-instant canonical-instant-string)))
+                (benchmark-case "parse-instant/lowercase-utc" iterations warmup-iterations samples
+                                (lambda () (funcall parse-instant lowercase-instant-string)))
+                (benchmark-case "parse-instant/numeric-offset" iterations warmup-iterations samples
+                                (lambda () (funcall parse-instant offset-instant-string)))
                 (benchmark-case "resolve-local-date-time" iterations warmup-iterations samples
                                 (lambda () (funcall resolve-local-date-time local zone)))
                 (benchmark-case "zoned-date-time-of-local" iterations warmup-iterations samples
@@ -352,9 +366,10 @@
               pkgs.coreutils
             ];
             text = ''
-              export CL_SOURCE_REGISTRY="${self}//"
+              # Keep source compilation out of the measured process.
+              export CL_SOURCE_REGISTRY="${clDateKit}//"
               export TZDIR="${pkgs.tzdata}/share/zoneinfo"
-              ${isolatedLispCache}
+              ${isolatedLispEnvironment}
               printf '%s\n' 'Loading cl-date-kit benchmark...'
               timeout --kill-after=10s ${toString benchmarkTimeoutSeconds}s sbcl --script ${benchmarkScript} "$@"
             '';

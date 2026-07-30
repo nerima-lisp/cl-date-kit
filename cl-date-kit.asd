@@ -35,6 +35,7 @@
    (:file "zoned-date-time")
    (:file "rrule")
    (:file "rrule-codec")
+   (:file "rrule-date-selection")
    (:file "rrule-candidates")
    (:file "rrule-set")
    (:file "offset-date-time")
@@ -57,7 +58,7 @@
   :homepage "https://github.com/nerima-lisp/cl-date-kit"
   :bug-tracker "https://github.com/nerima-lisp/cl-date-kit/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-date-kit.git")
-  :depends-on ("cl-date-kit" (:version "cl-weave" "1.0.1"))
+  :depends-on ("cl-date-kit" (:version "cl-weave" "1.1.0"))
   :pathname "t"
   :serial t
   :components ((:file "package")

@@ -84,99 +84,129 @@
       (signals type-error (local-date-time-to-instant 0 offset)))))
 
 (describe
-    "AVAILABLE-TIME-ZONE-NAMES"
-    (it
-      "returns sorted, duplicate-free names that FIND-TIME-ZONE can resolve"
-      (let ((names (cl-date-kit:available-time-zone-names)))
-        (expect (member "Asia/Tokyo" names :test (function string=)) :to-be-truthy)
-        (expect (member "UTC" names :test (function string=)) :to-be-truthy)
-        (expect names :to-equal (sort (copy-list names) (function string<)))
+  "AVAILABLE-TIME-ZONE-NAMES"
+  (it
+    "returns sorted, non-empty, duplicate-free names"
+    (let ((names (cl-date-kit:available-time-zone-names)))
+      (expect names :to-be-truthy)
+      (expect
+        (every
+          (lambda (name)
+            (and (stringp name) (plusp (length name))))
+          names)
+        :to-be-truthy)
+      (expect names :to-equal (sort (copy-list names) (function string<)))
+      (expect
+        (length names)
+        :to-be
+        (length (remove-duplicates names :test (function string=))))))
+  (it
+    "resolves representative time zone names"
+    (dolist (name (list "UTC" "Asia/Tokyo" "America/New_York"))
+      (expect (time-zone-p (find-time-zone name)) :to-be-truthy)))
+  (it
+    "returns a fresh list after a cached lookup"
+    (let* ((first-result (cl-date-kit:available-time-zone-names))
+           (first-name (car first-result))
+           (second-result (cl-date-kit:available-time-zone-names)))
+      (setf (car first-result) "Synthetic/Mutated")
+      (expect (eq first-result second-result) :to-be-falsy)
+      (expect (car second-result) :to-equal first-name)))
+  (it
+    "uses the TZDIR environment root when one is configured"
+    (let ((tzdir (sb-ext:posix-getenv "TZDIR")))
+      (when (and tzdir (plusp (length tzdir)))
         (expect
-          (length names)
-          :to-be
-          (length (remove-duplicates names :test (function string=))))
-        (expect
-          (every (lambda (name) (time-zone-p (find-time-zone name))) names)
-          :to-be-truthy)))
-    (it
-      "returns a fresh list after a cached lookup"
-      (let* ((first-result (cl-date-kit:available-time-zone-names))
-             (first-name (car first-result))
-             (second-result (cl-date-kit:available-time-zone-names)))
-        (setf (car first-result) "Synthetic/Mutated")
-        (expect (eq first-result second-result) :to-be-falsy)
-        (expect (car second-result) :to-equal first-name)))
-    (it
-      "uses the TZDIR environment root when one is configured"
-      (let ((tzdir (sb-ext:posix-getenv "TZDIR")))
-        (when (and tzdir (plusp (length tzdir)))
-          (expect
-            (cl-date-kit:available-time-zone-names :tzdir tzdir)
-            :to-equal
-            (cl-date-kit:available-time-zone-names))))))
+          (cl-date-kit:available-time-zone-names :tzdir tzdir)
+          :to-equal
+          (cl-date-kit:available-time-zone-names))))))
 
 (defun %call-with-temporary-tzdir (function)
   (let ((directory
-          (merge-pathnames
-           (format nil "cl-date-kit-tzdir-~36R-~36R/"
-                   (get-universal-time)
-                   (random most-positive-fixnum))
-           #P"/tmp/")))
+        (merge-pathnames
+          (format
+            nil
+            "cl-date-kit-tzdir-~36R-~36R/"
+            (get-universal-time)
+            (random most-positive-fixnum))
+          #P"/tmp/")))
     (ensure-directories-exist directory)
-    (unwind-protect
-        (funcall function directory)
+    (unwind-protect (funcall function directory)
       (ignore-errors (delete-file (merge-pathnames #P"+VERSION" directory)))
       (ignore-errors (delete-file (merge-pathnames #P"tzdata.zi" directory)))
       (ignore-errors (sb-ext:delete-directory directory)))))
 
 (defun %write-temporary-tzdir-file (directory name content)
-  (with-open-file (stream (merge-pathnames name directory)
-                          :direction :output
-                          :if-exists :supersede)
+  (with-open-file (stream
+      (merge-pathnames name directory)
+      :direction
+      :output
+      :if-exists
+      :supersede)
     (write-string content stream)))
 
 (describe
- "TIME-ZONE-DATABASE-VERSION"
- (it
-  "trims whitespace around the +VERSION release"
-  (%call-with-temporary-tzdir
-   (lambda (tzdir)
-     (%write-temporary-tzdir-file tzdir #P"+VERSION"
-                                  (format nil " ~C2025b~C~%" #\Tab #\Return))
-     (expect (cl-date-kit:time-zone-database-version :tzdir tzdir)
-             :to-equal
-             "2025b"))))
- (it
-  "falls back to tzdata.zi when +VERSION is absent or invalid"
-  (%call-with-temporary-tzdir
-   (lambda (tzdir)
-     (%write-temporary-tzdir-file tzdir #P"tzdata.zi"
-                                  (format nil "# version 2025b~%"))
-     (expect (cl-date-kit:time-zone-database-version :tzdir tzdir)
-             :to-equal
-             "2025b")
-     (%write-temporary-tzdir-file tzdir #P"+VERSION"
-                                  (format nil "not-a-release~%"))
-     (expect (cl-date-kit:time-zone-database-version :tzdir tzdir)
-             :to-equal
-             "2025b"))))
- (it
-  "returns NIL when neither version source is valid"
-  (%call-with-temporary-tzdir
-   (lambda (tzdir)
-     (expect (cl-date-kit:time-zone-database-version :tzdir tzdir)
-             :to-be
-             nil)
-     (%write-temporary-tzdir-file tzdir #P"+VERSION"
-                                  (format nil "not-a-release~%"))
-     (%write-temporary-tzdir-file tzdir #P"tzdata.zi"
-                                  (format nil "# version invalid~%"))
-     (expect (cl-date-kit:time-zone-database-version :tzdir tzdir)
-             :to-be
-             nil)))))
+  "TIME-ZONE-DATABASE-VERSION"
+  (it
+    "trims whitespace around the +VERSION release"
+    (%call-with-temporary-tzdir
+      (lambda (tzdir)
+        (%write-temporary-tzdir-file
+          tzdir
+          #P"+VERSION"
+          (format nil " ~C2025b~C~%" #\Tab #\Return))
+        (expect (cl-date-kit:time-zone-database-version :tzdir tzdir) :to-equal "2025b"))))
+  (it
+    "falls back to tzdata.zi when +VERSION is absent or invalid"
+    (%call-with-temporary-tzdir
+      (lambda (tzdir)
+        (%write-temporary-tzdir-file
+          tzdir
+          #P"tzdata.zi"
+          (format nil "# version 2025b~%"))
+        (expect (cl-date-kit:time-zone-database-version :tzdir tzdir) :to-equal "2025b")
+        (%write-temporary-tzdir-file tzdir #P"+VERSION" (format nil "not-a-release~%"))
+        (expect (cl-date-kit:time-zone-database-version :tzdir tzdir) :to-equal "2025b"))))
+  (it
+    "returns NIL when neither version source is valid"
+    (%call-with-temporary-tzdir
+      (lambda (tzdir)
+        (expect (cl-date-kit:time-zone-database-version :tzdir tzdir) :to-be nil)
+        (%write-temporary-tzdir-file tzdir #P"+VERSION" (format nil "not-a-release~%"))
+        (%write-temporary-tzdir-file
+          tzdir
+          #P"tzdata.zi"
+          (format nil "# version invalid~%"))
+        (expect (cl-date-kit:time-zone-database-version :tzdir tzdir) :to-be nil)))))
 
-
-(progn (it "America/New_York is UTC-5 in January (standard time) and UTC-4 in July (daylight time)" (let ((ny (find-time-zone "America/New_York"))) (expect (zone-offset-total-seconds (offset-for-instant ny (zoned-date-time-to-instant (zoned-date-time-of-local (local-date-time-of 2024 1 15 12 0 0) ny)))) :to-be -18000) (expect (zone-offset-total-seconds (offset-for-instant ny (zoned-date-time-to-instant (zoned-date-time-of-local (local-date-time-of 2024 7 15 12 0 0) ny)))) :to-be -14400))) (it "converts instants through a named zone" (let* ((ny (find-time-zone "America/New_York")) (local (local-date-time-of 2024 7 15 12 0 0)) (instant (zoned-date-time-to-instant (zoned-date-time-of-local local ny)))) (expect (local-date-time= (local-date-time-of-instant instant ny) local) :to-be-truthy))))
+(progn
+  (it
+    "America/New_York is UTC-5 in January (standard time) and UTC-4 in July (daylight time)"
+    (let ((ny (find-time-zone "America/New_York")))
+      (expect
+        (zone-offset-total-seconds
+          (offset-for-instant
+            ny
+            (zoned-date-time-to-instant
+              (zoned-date-time-of-local (local-date-time-of 2024 1 15 12 0 0) ny))))
+        :to-be
+        -18000)
+      (expect
+        (zone-offset-total-seconds
+          (offset-for-instant
+            ny
+            (zoned-date-time-to-instant
+              (zoned-date-time-of-local (local-date-time-of 2024 7 15 12 0 0) ny))))
+        :to-be
+        -14400)))
+  (it
+    "converts instants through a named zone"
+    (let* ((ny (find-time-zone "America/New_York"))
+           (local (local-date-time-of 2024 7 15 12 0 0))
+           (instant (zoned-date-time-to-instant (zoned-date-time-of-local local ny))))
+      (expect
+        (local-date-time= (local-date-time-of-instant instant ny) local)
+        :to-be-truthy))))
 
 (describe "resolving a wall-clock LOCAL-DATE-TIME: the DST spring-forward gap"
   ;; 2024-03-10 02:00 America/New_York: clocks jump straight to 03:00 EDT.
@@ -233,9 +263,7 @@
       (expect
         (mapcar
           #'zone-offset-total-seconds
-          (possible-offsets-for-local-date-time
-           (local-date-time-of 2100 7 1 12 0 0)
-           ny))
+          (possible-offsets-for-local-date-time (local-date-time-of 2100 7 1 12 0 0) ny))
         :to-equal
         '(-14400))))
   (it
@@ -270,175 +298,180 @@
           :strict)))))
 
 (progn
-(describe
-  "TZif block validation"
-  (it
-    "rejects a truncated block before field access"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #()
-        0
-        (cl-date-kit::make-%tzif-header :typecnt 1 :charcnt 1)
-        4
-        "truncated-block")))
-  (it
-    "rejects an excessive transition count before allocation"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #()
-        0
-        (cl-date-kit::make-%tzif-header
-          :timecnt
-          (1+ cl-date-kit::+maximum-tzif-time-count+)
-          :typecnt
-          1)
-        4
-        "excessive-timecnt")))
-  (it
-    "rejects an excessive leap-second count before allocation"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #()
-        0
-        (cl-date-kit::make-%tzif-header
-          :leapcnt
-          (1+ cl-date-kit::+maximum-tzif-leap-count+)
-          :typecnt
-          1)
-        4
-        "excessive-leapcnt")))
-  (it
-    "rejects excessive abbreviation bytes before allocation"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #()
-        0
-        (cl-date-kit::make-%tzif-header
-          :charcnt
-          (1+ cl-date-kit::+maximum-tzif-character-count+)
-          :typecnt
-          1)
-        4
-        "excessive-charcnt")))
-  (it
-    "rejects a transition type index outside the type table"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #(0 0 0 0 1 0 0 0 0 0 0)
-        0
-        (cl-date-kit::make-%tzif-header :timecnt 1 :typecnt 1)
-        4
-        "invalid-type-index")))
-  (it
-    "rejects non-monotonic transition times"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #(0 0 0 2 0 0 0 1 0 0 0 0 0 0 0 0)
-        0
-        (cl-date-kit::make-%tzif-header :timecnt 2 :typecnt 1)
-        4
-        "unordered-transitions")))
-  (it
-    "rejects incompatible transition-indicator counts"
-    (signals
-      malformed-tzif
-      (cl-date-kit::%parse-tzif-block
-        #()
-        0
-        (cl-date-kit::make-%tzif-header :typecnt 1 :isstdcnt 2)
-        4
-        "invalid-indicators"))))
-(defun %make-tzif-header-bytes (version time-count type-count character-count)
-  (let ((header (make-array 44 :element-type (quote (unsigned-byte 8)) :initial-element 0)))
-    (replace header #(84 90 105 102))
-    (setf (aref header 4) version)
-    (flet ((write-u32 (offset value)
-             (dotimes (index 4)
-               (setf
-                 (aref header (+ offset index))
-                 (ldb (byte 8 (* 8 (- 3 index))) value)))))
-      (write-u32 32 time-count)
-      (write-u32 36 type-count)
-      (write-u32 40 character-count))
-    header))
-
-(defun %concatenate-tzif-octets (&rest parts)
-  (apply (function concatenate) (quote (vector (unsigned-byte 8))) parts))
-
-(defun %parse-synthetic-tzif-file (bytes)
-  (let ((path
+  (describe
+    "TZif block validation"
+    (it
+      "rejects a truncated block before field access"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #()
+          0
+          (cl-date-kit::make-%tzif-header :typecnt 1 :charcnt 1)
+          4
+          "truncated-block")))
+    (it
+      "rejects an excessive transition count before allocation"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #()
+          0
+          (cl-date-kit::make-%tzif-header
+            :timecnt
+            (1+ cl-date-kit::+maximum-tzif-time-count+)
+            :typecnt
+            1)
+          4
+          "excessive-timecnt")))
+    (it
+      "rejects an excessive leap-second count before allocation"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #()
+          0
+          (cl-date-kit::make-%tzif-header
+            :leapcnt
+            (1+ cl-date-kit::+maximum-tzif-leap-count+)
+            :typecnt
+            1)
+          4
+          "excessive-leapcnt")))
+    (it
+      "rejects excessive abbreviation bytes before allocation"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #()
+          0
+          (cl-date-kit::make-%tzif-header
+            :charcnt
+            (1+ cl-date-kit::+maximum-tzif-character-count+)
+            :typecnt
+            1)
+          4
+          "excessive-charcnt")))
+    (it
+      "rejects a transition type index outside the type table"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #(0 0 0 0 1 0 0 0 0 0 0)
+          0
+          (cl-date-kit::make-%tzif-header :timecnt 1 :typecnt 1)
+          4
+          "invalid-type-index")))
+    (it
+      "rejects non-monotonic transition times"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #(0 0 0 2 0 0 0 1 0 0 0 0 0 0 0 0)
+          0
+          (cl-date-kit::make-%tzif-header :timecnt 2 :typecnt 1)
+          4
+          "unordered-transitions")))
+    (it
+      "rejects incompatible transition-indicator counts"
+      (signals
+        malformed-tzif
+        (cl-date-kit::%parse-tzif-block
+          #()
+          0
+          (cl-date-kit::make-%tzif-header :typecnt 1 :isstdcnt 2)
+          4
+          "invalid-indicators"))))
+  (defun %make-tzif-header-bytes (version time-count type-count character-count)
+    (let ((header
+          (make-array 44 :element-type (quote (unsigned-byte 8)) :initial-element 0)))
+      (replace header #(84 90 105 102))
+      (setf (aref header 4) version)
+      (flet ((write-u32 (offset value)
+               (dotimes (index 4)
+              (setf (aref header (+ offset index)) (ldb (byte 8 (* 8 (- 3 index))) value)))))
+        (write-u32 32 time-count)
+        (write-u32 36 type-count)
+        (write-u32 40 character-count))
+      header))
+  (defun %concatenate-tzif-octets (&rest parts)
+    (apply (function concatenate) (quote (vector (unsigned-byte 8))) parts))
+  (defun %parse-synthetic-tzif-file (bytes)
+    (let ((path
           (make-pathname
             :name
-            (format nil "cl-date-kit-tzif-~36R-~36R" (get-universal-time) (random most-positive-fixnum))
-            :type "tzif"
-            :defaults #P"/tmp/")))
-    (unwind-protect
-        (progn
-          (with-open-file
-              (stream path :direction :output :if-exists :error :element-type (quote (unsigned-byte 8)))
+            (format
+              nil
+              "cl-date-kit-tzif-~36R-~36R"
+              (get-universal-time)
+              (random most-positive-fixnum))
+            :type
+            "tzif"
+            :defaults
+            #P"/tmp/")))
+      (unwind-protect (progn
+          (with-open-file (stream
+              path
+              :direction
+              :output
+              :if-exists
+              :error
+              :element-type
+              (quote (unsigned-byte 8)))
             (write-sequence bytes stream))
           (cl-date-kit::parse-tzif-file path))
-      (ignore-errors (delete-file path)))))
-
-(describe
-  "TZif file validation"
-  (it
-    "rejects an invalid magic number through the file parser"
-    (signals malformed-tzif (%parse-synthetic-tzif-file #(66 90 105 102))))
-  (it
-    "rejects a header whose declared block is truncated"
-    (signals
-      malformed-tzif
-      (%parse-synthetic-tzif-file (%make-tzif-header-bytes 0 0 1 1))))
-  (it
-    "rejects non-monotonic transition timestamps"
-    (signals
-      malformed-tzif
-      (%parse-synthetic-tzif-file
-        (%concatenate-tzif-octets
-          (%make-tzif-header-bytes 0 2 1 1)
-          #(0 0 0 2 0 0 0 1 0 0 0 0 0 0 0 0 0)))))
-  (it
-    "rejects a transition type index outside the declared type table"
-    (signals
-      malformed-tzif
-      (%parse-synthetic-tzif-file
-        (%concatenate-tzif-octets
-          (%make-tzif-header-bytes 0 1 1 1)
-          #(0 0 0 0 1 0 0 0 0 0 0 0)))))
-  (it
-    "rejects a type record with an invalid DST flag"
-    (signals
-      malformed-tzif
-      (%parse-synthetic-tzif-file
-        (%concatenate-tzif-octets
-          (%make-tzif-header-bytes 0 1 1 1)
-          #(0 0 0 0 0 0 0 0 0 2 0 0)))))
-  (it
-    "rejects an unterminated type abbreviation"
-    (signals
-      malformed-tzif
-      (%parse-synthetic-tzif-file
-        (%concatenate-tzif-octets
-          (%make-tzif-header-bytes 0 0 1 1)
-          #(0 0 0 0 0 0 65)))))
-  (it
-    "rejects a v2 file with a malformed POSIX footer"
-    (signals
-      malformed-tzif
-      (%parse-synthetic-tzif-file
-        (%concatenate-tzif-octets
-          (%make-tzif-header-bytes 2 0 1 1)
-          #(0 0 0 0 0 0 0)
-          (%make-tzif-header-bytes 2 0 1 1)
-          #(0 0 0 0 0 0 0)
-          #(88)))))))
+        (ignore-errors (delete-file path)))))
+  (describe
+    "TZif file validation"
+    (it
+      "rejects an invalid magic number through the file parser"
+      (signals malformed-tzif (%parse-synthetic-tzif-file #(66 90 105 102))))
+    (it
+      "rejects a header whose declared block is truncated"
+      (signals
+        malformed-tzif
+        (%parse-synthetic-tzif-file (%make-tzif-header-bytes 0 0 1 1))))
+    (it
+      "rejects non-monotonic transition timestamps"
+      (signals
+        malformed-tzif
+        (%parse-synthetic-tzif-file
+          (%concatenate-tzif-octets
+            (%make-tzif-header-bytes 0 2 1 1)
+            #(0 0 0 2 0 0 0 1 0 0 0 0 0 0 0 0 0)))))
+    (it
+      "rejects a transition type index outside the declared type table"
+      (signals
+        malformed-tzif
+        (%parse-synthetic-tzif-file
+          (%concatenate-tzif-octets
+            (%make-tzif-header-bytes 0 1 1 1)
+            #(0 0 0 0 1 0 0 0 0 0 0 0)))))
+    (it
+      "rejects a type record with an invalid DST flag"
+      (signals
+        malformed-tzif
+        (%parse-synthetic-tzif-file
+          (%concatenate-tzif-octets
+            (%make-tzif-header-bytes 0 1 1 1)
+            #(0 0 0 0 0 0 0 0 0 2 0 0)))))
+    (it
+      "rejects an unterminated type abbreviation"
+      (signals
+        malformed-tzif
+        (%parse-synthetic-tzif-file
+          (%concatenate-tzif-octets (%make-tzif-header-bytes 0 0 1 1) #(0 0 0 0 0 0 65)))))
+    (it
+      "rejects a v2 file with a malformed POSIX footer"
+      (signals
+        malformed-tzif
+        (%parse-synthetic-tzif-file
+          (%concatenate-tzif-octets
+            (%make-tzif-header-bytes 2 0 1 1)
+            #(0 0 0 0 0 0 0)
+            (%make-tzif-header-bytes 2 0 1 1)
+            #(0 0 0 0 0 0 0)
+            #(88)))))))
 
 (progn
   (describe
@@ -494,11 +527,11 @@
           3600))
       (let* ((rule (cl-date-kit::parse-posix-tz-string "STD0DST,M1.1.0/-167,M6.1.0/2"))
              (start
-               (cl-date-kit::%posix-transition-instant
-                2025
-                (cl-date-kit::posix-tz-rule-dst-start rule)
-                (cl-date-kit::posix-tz-rule-std-utc-offset rule)
-                (cl-date-kit::posix-tz-rule-std-utc-offset rule))))
+            (cl-date-kit::%posix-transition-instant
+              2025
+              (cl-date-kit::posix-tz-rule-dst-start rule)
+              (cl-date-kit::posix-tz-rule-std-utc-offset rule)
+              (cl-date-kit::posix-tz-rule-std-utc-offset rule))))
         (expect (cl-date-kit::%offset-from-posix-rule (1- start) rule) :to-be 0)
         (expect (cl-date-kit::%offset-from-posix-rule start rule) :to-be 3600)
         (expect
@@ -517,24 +550,24 @@
         "uses UTC for u, g, and z suffixes"
         (dolist (suffix (quote ("u" "g" "z")))
           (let ((rule
-                 (cl-date-kit::parse-posix-tz-string
+                (cl-date-kit::parse-posix-tz-string
                   (format nil "EST5EDT,M3.2.0/2~A,M11.1.0/2~A" suffix suffix))))
             (expect
-             (cl-date-kit::%offset-from-posix-rule
-              (+
-               (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400)
-               (* 1 3600)
-               59
-               60)
-              rule)
-             :to-be
-             -18000)
+              (cl-date-kit::%offset-from-posix-rule
+                (+
+                  (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400)
+                  (* 1 3600)
+                  59
+                  60)
+                rule)
+              :to-be
+              -18000)
             (expect
-             (cl-date-kit::%offset-from-posix-rule
-              (+ (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400) (* 2 3600))
-              rule)
-             :to-be
-             -14400))))
+              (cl-date-kit::%offset-from-posix-rule
+                (+ (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400) (* 2 3600))
+                rule)
+              :to-be
+              -14400))))
       (it
         "caches POSIX transitions by rule and year"
         (let* ((rule (cl-date-kit::parse-posix-tz-string "EST5EDT,M3.2.0,M11.1.0"))
@@ -949,23 +982,20 @@
           (calls 0)
           (instant (make-instant 1710054000 987654321))
           (zone (find-time-zone "America/New_York")))
-      (unwind-protect
-          (progn
-            (setf (symbol-function 'cl-date-kit:local-date-time-of-instant)
-                  (lambda (&rest arguments)
-                    (incf calls)
-                    (apply original arguments)))
-            (expect
-              (local-date= (local-date-of-instant instant zone) (make-local-date 2024 3 10))
-              :to-be-truthy)
-            (expect
-              (local-time=
-                (local-time-of-instant instant zone)
-                (make-local-time 3 0 0 987654321))
-              :to-be-truthy)
-            (expect calls :to-be 0))
+      (unwind-protect (progn
+          (setf (symbol-function 'cl-date-kit:local-date-time-of-instant) (lambda (&rest arguments)
+              (incf calls)
+              (apply original arguments)))
+          (expect
+            (local-date= (local-date-of-instant instant zone) (make-local-date 2024 3 10))
+            :to-be-truthy)
+          (expect
+            (local-time=
+              (local-time-of-instant instant zone)
+              (make-local-time 3 0 0 987654321))
+            :to-be-truthy)
+          (expect calls :to-be 0))
         (setf (symbol-function 'cl-date-kit:local-date-time-of-instant) original))))
-
   (it
     "projects New York instants across the 2024 DST spring-forward boundary"
     (let* ((new-york (find-time-zone "America/New_York"))
@@ -1084,56 +1114,203 @@
     "bounded explicit TZif local-time lookup"
     (it
       "finds a transition across the zone maximum offset window"
-      (let* ((before-type
-               (cl-date-kit::make-tzif-type :utc-offset -43200 :dst-p nil))
-             (after-type
-               (cl-date-kit::make-tzif-type :utc-offset 43200 :dst-p nil))
+      (let* ((before-type (cl-date-kit::make-tzif-type :utc-offset -43200 :dst-p nil))
+             (after-type (cl-date-kit::make-tzif-type :utc-offset 43200 :dst-p nil))
              (data
-               (cl-date-kit::make-tzif-data
-                :transition-times #(0)
-                :transition-types (vector after-type)
-                :initial-type before-type
-                :abbreviation-table ""
-                :posix-tz-string nil))
+            (cl-date-kit::make-tzif-data
+              :transition-times
+              #(0)
+              :transition-types
+              (vector after-type)
+              :initial-type
+              before-type
+              :abbreviation-table
+              ""
+              :posix-tz-string
+              nil))
              (zone (cl-date-kit::%make-time-zone "Synthetic/Dateline" data nil))
              (local-date-time (local-date-time-of 1970 1 1 0 0 0))
              (transition (local-date-time-zone-transition local-date-time zone)))
         (expect
-         (possible-offsets-for-local-date-time local-date-time zone)
-         :to-equal
-         (quote ()))
+          (possible-offsets-for-local-date-time local-date-time zone)
+          :to-equal
+          (quote ()))
         (expect (zone-transition-p transition) :to-be-truthy)
         (expect
-         (zone-offset-total-seconds (zone-transition-offset-before transition))
-         :to-be
-         -43200)
+          (zone-offset-total-seconds (zone-transition-offset-before transition))
+          :to-be
+          -43200)
         (expect
-         (zone-offset-total-seconds (zone-transition-offset-after transition))
-         :to-be
-         43200)
+          (zone-offset-total-seconds (zone-transition-offset-after transition))
+          :to-be
+          43200)
         (expect (zone-transition-gap-p transition) :to-be-truthy))))
   (describe
-  "local time resolution lookup reuse"
-  (it
-    "uses one TZif lookup after transition classification"
-    (let* ((zone (find-time-zone "America/New_York"))
-           (local-date-time (local-date-time-of 2024 1 15 12 0 0))
-           (original
-             (symbol-function 'cl-date-kit::%time-zone-type-for-instant))
-           (calls 0))
-      (unwind-protect
-           (progn
-             (setf
-              (symbol-function 'cl-date-kit::%time-zone-type-for-instant)
-              (lambda (time-zone epoch)
+    "local time resolution lookup reuse"
+    (it
+      "avoids a TZif lookup after explicit transition classification"
+      (let* ((zone (find-time-zone "America/New_York"))
+             (local-date-time (local-date-time-of 2024 1 15 12 0 0))
+             (original (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)))
+             (calls 0))
+        (unwind-protect (progn
+            (setf (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)) (lambda (time-zone epoch)
                 (incf calls)
                 (funcall original time-zone epoch)))
-             (expect
-              (zone-offset-total-seconds
-               (resolve-local-date-time local-date-time zone))
+            (expect
+              (zone-offset-total-seconds (resolve-local-date-time local-date-time zone))
               :to-be
               -18000)
-             (expect calls :to-equal 1))
-        (setf
-         (symbol-function 'cl-date-kit::%time-zone-type-for-instant)
-         original))))))
+            (expect calls :to-equal 0))
+          (setf (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)) original))))
+    (it
+      "retains the TZif lookup at the final explicit transition"
+      (let* ((before-type (cl-date-kit::make-tzif-type :utc-offset 3600 :dst-p nil))
+             (after-type (cl-date-kit::make-tzif-type :utc-offset 3600 :dst-p nil))
+             (data
+            (cl-date-kit::make-tzif-data
+              :transition-times
+              #(0)
+              :transition-types
+              (vector after-type)
+              :initial-type
+              before-type
+              :abbreviation-table
+              ""
+              :posix-tz-string
+              nil))
+             (zone (cl-date-kit::%make-time-zone "Synthetic/Terminal" data nil))
+             (local-date-time (local-date-time-of 1970 1 2 0 0 0))
+             (original (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)))
+             (calls 0))
+        (unwind-protect (progn
+            (setf (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)) (lambda (time-zone epoch)
+                (incf calls)
+                (funcall original time-zone epoch)))
+            (expect
+              (zone-offset-total-seconds (resolve-local-date-time local-date-time zone))
+              :to-be
+              3600)
+            (expect calls :to-equal 1))
+          (setf (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)) original))))
+    (it
+      "uses the POSIX footer when the TZif table has no transitions"
+      (let* ((initial-type (cl-date-kit::make-tzif-type :utc-offset 10800 :dst-p nil))
+             (data
+            (cl-date-kit::make-tzif-data
+              :transition-times
+              #()
+              :transition-types
+              #()
+              :initial-type
+              initial-type
+              :abbreviation-table
+              ""
+              :posix-tz-string
+              "<+04>-4"))
+             (rule (cl-date-kit::parse-posix-tz-string "<+04>-4" "synthetic footer"))
+             (zone (cl-date-kit::%make-time-zone "Synthetic/Footer" data rule))
+             (local-date-time (local-date-time-of 2100 1 2 0 0 0))
+             (original (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)))
+             (calls 0))
+        (unwind-protect (progn
+            (setf (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)) (lambda (time-zone epoch)
+                (incf calls)
+                (funcall original time-zone epoch)))
+            (expect
+              (zone-offset-total-seconds (resolve-local-date-time local-date-time zone))
+              :to-be
+              14400)
+            (expect calls :to-equal 1))
+          (setf (symbol-function (quote cl-date-kit::%time-zone-type-for-instant)) original))))))
+
+(defun %make-tzif-characterization-block (time-width)
+  (let* ((times
+        (if (= time-width 4) #(-1 100)
+          #(-1 4294967296)))
+         (bytes
+        (make-array
+          (+ (* 2 time-width) 2 12 8 4)
+          :element-type
+          '(unsigned-byte 8)
+          :initial-element
+          0))
+         (position 0))
+    (labels ((write-signed (value width)
+               (dotimes (index width)
+            (setf (aref bytes (+ position index)) (ldb (byte 8 (* 8 (- width index 1))) value)))
+               (incf position width))
+             (write-u8 (value)
+               (setf (aref bytes position) value)
+               (incf position)))
+      (dolist (time (coerce times 'list))
+        (write-signed time time-width))
+      (write-u8 1)
+      (write-u8 0)
+      (write-signed 3600 4)
+      (write-u8 0)
+      (write-u8 0)
+      (write-signed 7200 4)
+      (write-u8 1)
+      (write-u8 4)
+      (dolist (octet '(83 84 68 0 68 83 84 0))
+        (write-u8 octet))
+      (write-u8 0)
+      (write-u8 1)
+      (write-u8 1)
+      (write-u8 0))
+    (values bytes times)))
+
+(describe
+  "TZif block characterization"
+  (it
+    "parses 32-bit and 64-bit transitions, initial type, indicators, and abbreviations"
+    (dolist (time-width '(4 8))
+      (multiple-value-bind (bytes expected-times) (%make-tzif-characterization-block time-width)
+        (let ((header
+              (cl-date-kit::make-%tzif-header
+                :timecnt
+                2
+                :typecnt
+                2
+                :charcnt
+                8
+                :isstdcnt
+                2
+                :isutcnt
+                2)))
+          (multiple-value-bind (times transition-types initial-type abbreviations end) (cl-date-kit::%parse-tzif-block bytes 0 header time-width "synthetic")
+            (expect (aref times 0) :to-be (aref expected-times 0))
+            (expect (aref times 1) :to-be (aref expected-times 1))
+            (expect end :to-be (length bytes))
+            (expect (cl-date-kit::tzif-type-utc-offset initial-type) :to-be 3600)
+            (expect (cl-date-kit::tzif-type-dst-p initial-type) :to-be-falsy)
+            (expect abbreviations :to-equal (format nil "STD~CDST~C" #\Null #\Null))
+            (let* ((data
+                  (cl-date-kit::make-tzif-data
+                    :transition-times
+                    times
+                    :transition-types
+                    transition-types
+                    :initial-type
+                    initial-type
+                    :abbreviation-table
+                    abbreviations))
+                   (zone (cl-date-kit::%make-time-zone "Synthetic/TZif" data nil))
+                   (first-transition (aref times 0))
+                   (second-transition (aref times 1)))
+              (expect
+                (zone-state-abbreviation
+                  (zone-state-for-instant zone (make-instant (1- first-transition))))
+                :to-equal
+                "STD")
+              (expect
+                (zone-state-abbreviation
+                  (zone-state-for-instant zone (make-instant first-transition)))
+                :to-equal
+                "DST")
+              (expect
+                (zone-state-abbreviation
+                  (zone-state-for-instant zone (make-instant second-transition)))
+                :to-equal
+                "STD"))))))))

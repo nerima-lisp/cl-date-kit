@@ -23,16 +23,18 @@
     (declare (type fixnum lo hi result))
     (loop while (<= lo hi)
           do (let ((mid (ash (+ lo hi) -1)))
-               (declare (type fixnum mid))
-               (if (<= (aref vector mid) value)
-                   (progn
-                     (setf result mid)
-                     (setf lo (1+ mid)))
-                   (setf hi (1- mid)))))
+        (declare (type fixnum mid))
+        (if (<= (aref vector mid) value) (progn
+            (setf result mid)
+            (setf lo (1+ mid)))
+          (setf hi (1- mid)))))
     result))
 
 ;;; --- IANA time zones ----------------------------------------------------
-(defstruct (time-zone (:constructor %make-time-zone (name tzif-data posix-rule))) (name "" :type string :read-only t) (tzif-data nil :type tzif-data :read-only t) (posix-rule nil :type (or null posix-tz-rule) :read-only t) (local-search-radius nil :type (or null (integer 0 *))))
+(defstruct (time-zone (:constructor %make-time-zone (name tzif-data posix-rule))) (name "" :type string :read-only t)
+  (tzif-data nil :type tzif-data :read-only t)
+  (posix-rule nil :type (or null posix-tz-rule) :read-only t)
+  (local-search-radius nil :type (or null (integer 0 *))))
 
 (defun %safe-time-zone-name-p (name)
   "Rejects absolute paths and \"..\" components so FIND-TIME-ZONE cannot be
@@ -93,32 +95,32 @@ used to read arbitrary files outside the zoneinfo directory."
       (and (>= name-length 6) (string= name "posix/" :end1 6 :end2 6))
       (and (>= name-length 6) (string= name "right/" :end1 6 :end2 6)))))
 
-(progn (defvar *available-time-zone-names-cache* (make-hash-table :test (function equal))) (defvar *available-time-zone-names-cache-lock*
-    (sb-thread:make-mutex :name "cl-date-kit time-zone names cache")) (defun %available-time-zone-names-under-root (root)
+(progn
+  (defvar *available-time-zone-names-cache* (make-hash-table :test (function equal)))
+  (defvar *available-time-zone-names-cache-lock* (sb-thread:make-mutex :name "cl-date-kit time-zone names cache"))
+  (defun %available-time-zone-names-under-root (root)
     (let ((directory (%zoneinfo-root-pathname root)))
       (when directory
         (let ((key (namestring directory)))
-          (multiple-value-bind (cached present-p)
-              (sb-thread:with-mutex (*available-time-zone-names-cache-lock*)
-                (gethash key *available-time-zone-names-cache*))
-            (if present-p
-                (copy-list cached)
-                (let ((names
-                        (loop for path in (directory (merge-pathnames #P"**/*" directory))
-                              for name = (namestring (enough-namestring path directory))
-                              when (and
-                                     (%safe-time-zone-name-p name)
-                                     (not (%excluded-zoneinfo-name-p name))
-                                     (%tzif-file-p path))
-                                collect name)))
-                  (sb-thread:with-mutex (*available-time-zone-names-cache-lock*)
-                    (multiple-value-bind (cached present-p)
-                        (gethash key *available-time-zone-names-cache*)
-                      (if present-p
-                          (copy-list cached)
-                          (progn
-                            (setf (gethash key *available-time-zone-names-cache*) names)
-                            (copy-list names)))))))))))))
+          (multiple-value-bind (cached present-p) (sb-thread:with-mutex
+              (*available-time-zone-names-cache-lock*)
+              (gethash key *available-time-zone-names-cache*))
+            (if present-p (copy-list cached)
+              (let ((names
+                    (loop for path in (directory (merge-pathnames #P"**/*" directory))
+                          for name = (namestring (enough-namestring path directory))
+                          when (and
+                        (%safe-time-zone-name-p name)
+                        (not (%excluded-zoneinfo-name-p name))
+                        (%tzif-file-p path))
+                            collect name)))
+                (sb-thread:with-mutex
+                  (*available-time-zone-names-cache-lock*)
+                  (multiple-value-bind (cached present-p) (gethash key *available-time-zone-names-cache*)
+                    (if present-p (copy-list cached)
+                      (progn
+                        (setf (gethash key *available-time-zone-names-cache*) names)
+                        (copy-list names)))))))))))))
 
 (defun available-time-zone-names (&key tzdir)
   "Returns a fresh, string<-sorted list of IANA names found in TZif files.
@@ -134,7 +136,6 @@ TZDIR environment variable and the standard zoneinfo directory are searched."
 
 (progn
   (defparameter +tzdata-version-line-limit+ 128)
-
   (defun %read-bounded-line (stream)
     "Reads one metadata line from STREAM without retaining more than the configured limit.\nReturns the line and true when it is complete; returns NIL and NIL when too long."
     (check-type stream stream)
@@ -142,15 +143,13 @@ TZDIR environment variable and the standard zoneinfo directory are searched."
           (length 0))
       (loop for character = (read-char stream nil nil)
             do (cond
-                 ((null character)
-                  (return (values (get-output-stream-string output) t)))
-                 ((char= character #\Newline)
-                  (return (values (get-output-stream-string output) t)))
-                 ((>= length +tzdata-version-line-limit+)
-                  (return (values nil nil)))
-                 (t
-                  (write-char character output)
-                  (incf length)))))))
+          ((null character) (return (values (get-output-stream-string output) t)))
+          ((char= character #\Newline)
+            (return (values (get-output-stream-string output) t)))
+          ((>= length +tzdata-version-line-limit+) (return (values nil nil)))
+          (t
+            (write-char character output)
+            (incf length)))))))
 
 (defun %iana-tzdata-release-p (value)
   (and
@@ -192,10 +191,6 @@ TZDIR environment variable and the standard zoneinfo directory are searched."
             ((and (= index (1- n)) (> epoch (aref times index)) (time-zone-posix-rule zone))
               nil)
             (t (aref (tzif-data-transition-types data) index)))))))
-  (defun %time-zone-offset-seconds-for-instant (zone epoch)
-    (let ((type (%time-zone-type-for-instant zone epoch)))
-      (if type (tzif-type-utc-offset type)
-        (nth-value 0 (%posix-state-values-at-instant epoch (time-zone-posix-rule zone))))))
   (defun %time-zone-offset-for-instant (zone epoch)
     (let ((type (%time-zone-type-for-instant zone epoch)))
       (if type (%tzif-type->offset type)
@@ -281,15 +276,15 @@ environment variable, then /usr/share/zoneinfo, parsing its TZif file."
         (error (quote time-zone-not-found) :name name))
       (let ((key (%time-zone-cache-key name path)))
         (or
-          (sb-thread:with-mutex (*time-zone-cache-lock*)
-            (gethash key *time-zone-cache*))
+          (sb-thread:with-mutex (*time-zone-cache-lock*) (gethash key *time-zone-cache*))
           (let* ((data (parse-tzif-file path))
                  (rule
-                   (and
-                     (tzif-data-posix-tz-string data)
-                     (parse-posix-tz-string (tzif-data-posix-tz-string data) path)))
+                (and
+                  (tzif-data-posix-tz-string data)
+                  (parse-posix-tz-string (tzif-data-posix-tz-string data) path)))
                  (candidate (%make-time-zone name data rule)))
-            (sb-thread:with-mutex (*time-zone-cache-lock*)
+            (sb-thread:with-mutex
+              (*time-zone-cache-lock*)
               (or
                 (gethash key *time-zone-cache*)
                 (setf (gethash key *time-zone-cache*) candidate)))))))))

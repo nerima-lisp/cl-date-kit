@@ -162,10 +162,16 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
   "ISO-8601 weekday keywords ordered from Monday through Sunday.")
 
 (defun day-of-week-value (day-of-week)
-  "Returns DAY-OF-WEEK's ISO-8601 value: Monday is 1 and Sunday is 7."
-  (let ((index (position day-of-week *iso-day-of-week-names* :test #'eq)))
-    (if index (1+ index)
-      (error 'invalid-day-of-week :value day-of-week))))
+  "Returns the ISO-8601 value for DAY-OF-WEEK: Monday is 1 and Sunday is 7."
+  (case day-of-week
+    (:monday 1)
+    (:tuesday 2)
+    (:wednesday 3)
+    (:thursday 4)
+    (:friday 5)
+    (:saturday 6)
+    (:sunday 7)
+    (otherwise (error 'invalid-day-of-week :value day-of-week))))
 
 (defun day-of-week-from-value (value)
   "Returns the weekday keyword for ISO-8601 VALUE in the inclusive range 1 through 7."

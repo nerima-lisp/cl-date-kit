@@ -11,7 +11,35 @@
     (error 'date-time-parse-error :string string :expected expected))
   (parse-integer string :start start :end end))
 
-(defun %parse-decimal (string start end expected) "Parses a possibly-fractional decimal number in STRING[START,END) as a rational." (let ((decimal-separator (position-if (lambda (character) (member character '(#\. #\,))) string :start start :end end))) (if decimal-separator (let ((next-separator (position-if (lambda (character) (member character '(#\. #\,))) string :start (1+ decimal-separator) :end end))) (when next-separator (error 'date-time-parse-error :string string :expected expected)) (+ (%parse-fixed-integer string start decimal-separator expected) (let ((fraction (subseq string (1+ decimal-separator) end))) (/ (%parse-fixed-integer fraction 0 (length fraction) expected) (expt 10 (length fraction)))))) (%parse-fixed-integer string start end expected))))
+(defun %parse-decimal (string start end expected)
+  "Parses a possibly-fractional decimal number in STRING[START,END) as a rational."
+  (let ((decimal-separator
+        (position-if
+          (lambda (character)
+            (member character '(#\. #\,)))
+          string
+          :start
+          start
+          :end
+          end)))
+    (if decimal-separator (let ((next-separator
+            (position-if
+              (lambda (character)
+                (member character '(#\. #\,)))
+              string
+              :start
+              (1+ decimal-separator)
+              :end
+              end)))
+        (when next-separator
+          (error 'date-time-parse-error :string string :expected expected))
+        (+
+          (%parse-fixed-integer string start decimal-separator expected)
+          (let ((fraction (subseq string (1+ decimal-separator) end)))
+            (/
+              (%parse-fixed-integer fraction 0 (length fraction) expected)
+              (expt 10 (length fraction))))))
+      (%parse-fixed-integer string start end expected))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro with-date-time-parse-error ((string expected) &body body)
@@ -26,18 +54,20 @@
 
 ;;; LocalDate ---------------------------------------------------------------
 (progn
-  (defun %format-iso-year (year)
+  (defun %write-iso-year (year stream)
     (cond
-      ((minusp year) (format nil "-~4,'0D" (abs year)))
-      ((<= year 9999) (format nil "~4,'0D" year))
-      (t (format nil "+~4,'0D" year))))
+      ((minusp year) (format stream "-~4,'0D" (abs year)))
+      ((<= year 9999) (format stream "~4,'0D" year))
+      (t (format stream "+~4,'0D" year))))
+  (defun %format-iso-year (year)
+    (with-output-to-string (stream)
+      (%write-iso-year year stream)))
+  (defun %write-local-date (date stream)
+    (%write-iso-year (local-date-year date) stream)
+    (format stream "-~2,'0D-~2,'0D" (local-date-month date) (local-date-day date)))
   (defun format-local-date (date)
-    (format
-      nil
-      "~A-~2,'0D-~2,'0D"
-      (%format-iso-year (local-date-year date))
-      (local-date-month date)
-      (local-date-day date))))
+    (with-output-to-string (stream)
+      (%write-local-date date stream))))
 
 (defun format-local-date-ordinal (date)
   "Formats DATE as an ISO 8601 ordinal date: YYYY-DDD."

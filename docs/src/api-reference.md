@@ -519,7 +519,7 @@ helpers with the same local-calendar and overlap-resolution semantics.
 convenience "now" accessors taking `:ZONE` and
 `:CLOCK` keywords.
 
-## RFC 5545 RRULE (`src/rrule.lisp`, `src/rrule-codec.lisp`, `src/rrule-candidates.lisp`)
+## RFC 5545 RRULE (`src/rrule.lisp`, `src/rrule-codec.lisp`, `src/rrule-date-selection.lisp`, `src/rrule-candidates.lisp`)
 
 `RRULE` is the immutable representation of an RFC 5545 recurrence rule.
 `MAKE-RRULE` constructs one from keyword arguments; `PARSE-RRULE` reads a
@@ -572,11 +572,9 @@ If the period limit is exhausted before `COUNT` is reached, the occurrence APIs
 return the generated prefix.
 
 Candidate local times are resolved strictly in the `DTSTART` zone. A local
-time in a DST gap is skipped entirely -- it never produces an occurrence.
-For a DST overlap, the earlier valid offset is selected, the same choice
-`:COMPATIBLE` makes on overlap. The gap handling is where this differs from
-the general `ZONED-DATE-TIME-OF-LOCAL` default: `:COMPATIBLE` shifts a gap
-time forward to the post-transition offset instead of skipping it.
+time in a DST gap is skipped. For a DST overlap, the earlier valid offset is
+selected. This differs from the general `ZONED-DATE-TIME-OF-LOCAL` default,
+which uses `:COMPATIBLE` disambiguation.
 
 ```lisp
 (let* ((zone (find-time-zone "Asia/Tokyo"))

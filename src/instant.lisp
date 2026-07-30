@@ -42,11 +42,7 @@
     "Construct an INSTANT from Unix EPOCH-SECOND and a nanosecond adjustment."
     (check-type epoch-second integer)
     (check-type nanosecond-adjustment integer)
-    (make-instant epoch-second nanosecond-adjustment))
-  (defun instant-of-universal-time (universal-time)
-    "Construct an INSTANT from Common Lisp UNIVERSAL-TIME."
-    (check-type universal-time integer)
-    (make-instant (- universal-time +unix-epoch-universal-time+))))
+    (make-instant epoch-second nanosecond-adjustment)))
 
 (defun instant-of-epoch-millis (epoch-millis)
   "Construct an INSTANT from an integer Unix-epoch millisecond count."
@@ -91,70 +87,101 @@ Sub-microsecond values round down on the UTC timeline."
 (progn
   (defun %instant-plus-components (instant seconds nanos)
     "Adds signed second and nanosecond components without intermediate instances."
-    (multiple-value-bind (extra-seconds normalized-nanos)
-        (floor (+ (instant-nanosecond instant) nanos) +nanos-per-second+)
+    (multiple-value-bind (extra-seconds normalized-nanos) (floor (+ (instant-nanosecond instant) nanos) +nanos-per-second+)
       (%make-instant
-       (+ (instant-epoch-second instant) seconds extra-seconds)
-       normalized-nanos)))
-
-  (defmacro define-instant-fixed-unit-arithmetic
-      (plus-name minus-name amount seconds-factor nanos-factor plus-documentation minus-documentation)
+        (+ (instant-epoch-second instant) seconds extra-seconds)
+        normalized-nanos)))
+  (defmacro define-instant-fixed-unit-arithmetic (plus-name
+      minus-name
+      amount
+      seconds-factor
+      nanos-factor
+      plus-documentation
+      minus-documentation)
     `(progn
-       (defun ,plus-name (instant ,amount)
-         ,plus-documentation
-         (check-type ,amount integer)
-         (%instant-plus-components instant
-                                   (* ,amount ,seconds-factor)
-                                   (* ,amount ,nanos-factor)))
-       (defun ,minus-name (instant ,amount)
-         ,minus-documentation
-         (check-type ,amount integer)
-         (%instant-plus-components instant
-                                   (* (- ,amount) ,seconds-factor)
-                                   (* (- ,amount) ,nanos-factor)))))
-
+      (defun ,plus-name (instant ,amount)
+        ,plus-documentation
+        (check-type ,amount integer)
+        (%instant-plus-components
+          instant
+          (* ,amount ,seconds-factor)
+          (* ,amount ,nanos-factor)))
+      (defun ,minus-name (instant ,amount)
+        ,minus-documentation
+        (check-type ,amount integer)
+        (%instant-plus-components
+          instant
+          (* (- ,amount) ,seconds-factor)
+          (* (- ,amount) ,nanos-factor)))))
   (define-instant-fixed-unit-arithmetic
-      instant-plus-nanos instant-minus-nanos nanos 0 1
+    instant-plus-nanos
+    instant-minus-nanos
+    nanos
+    0
+    1
     "Return INSTANT advanced by the signed integer NANOSECONDS."
     "Return INSTANT moved backward by the signed integer NANOSECONDS.")
   (define-instant-fixed-unit-arithmetic
-      instant-plus-micros instant-minus-micros micros 0 1000
+    instant-plus-micros
+    instant-minus-micros
+    micros
+    0
+    1000
     "Return INSTANT advanced by the signed integer MICROSECONDS."
     "Return INSTANT moved backward by the signed integer MICROSECONDS.")
   (define-instant-fixed-unit-arithmetic
-      instant-plus-millis instant-minus-millis millis 0 1000000
+    instant-plus-millis
+    instant-minus-millis
+    millis
+    0
+    1000000
     "Return INSTANT advanced by the signed integer MILLISECONDS."
     "Return INSTANT moved backward by the signed integer MILLISECONDS.")
   (define-instant-fixed-unit-arithmetic
-      instant-plus-seconds instant-minus-seconds seconds 1 0
+    instant-plus-seconds
+    instant-minus-seconds
+    seconds
+    1
+    0
     "Return INSTANT advanced by the signed integer SECONDS."
     "Return INSTANT moved backward by the signed integer SECONDS.")
   (define-instant-fixed-unit-arithmetic
-      instant-plus-minutes instant-minus-minutes minutes 60 0
+    instant-plus-minutes
+    instant-minus-minutes
+    minutes
+    60
+    0
     "Return INSTANT advanced by the signed integer MINUTES."
     "Return INSTANT moved backward by the signed integer MINUTES.")
   (define-instant-fixed-unit-arithmetic
-      instant-plus-hours instant-minus-hours hours 3600 0
+    instant-plus-hours
+    instant-minus-hours
+    hours
+    3600
+    0
     "Return INSTANT advanced by the signed integer HOURS."
     "Return INSTANT moved backward by the signed integer HOURS.")
   (define-instant-fixed-unit-arithmetic
-      instant-plus-days instant-minus-days days 86400 0
+    instant-plus-days
+    instant-minus-days
+    days
+    86400
+    0
     "Return INSTANT advanced by the signed integer 24-hour DAYS."
     "Return INSTANT moved backward by the signed integer 24-hour DAYS."))
 
 (progn
   (defun instant-plus-duration (instant d)
     (%instant-plus-components instant (duration-seconds d) (duration-nanos d)))
-
   (defun instant-minus-duration (instant d)
-    (%instant-plus-components instant
-                              (- (duration-seconds d))
-                              (- (duration-nanos d))))
-
+    (%instant-plus-components
+      instant
+      (- (duration-seconds d))
+      (- (duration-nanos d))))
   (defmethod duration-between ((start instant) (end instant))
     (duration-of-seconds
-     (- (instant-epoch-second end) (instant-epoch-second start))
-     (- (instant-nanosecond end) (instant-nanosecond start)))))
+      (- (instant-epoch-second end) (instant-epoch-second start))
+      (- (instant-nanosecond end) (instant-nanosecond start)))))
 
 (defun instant-until (start end)
   "The exact DURATION from START to END."
@@ -187,29 +214,25 @@ Sub-microsecond values round down on the UTC timeline."
   (defun %instant-truncated-to-unit (instant unit-nanos)
     (let ((seconds (instant-epoch-second instant))
           (nanos (instant-nanosecond instant)))
-      (if (<= unit-nanos +nanos-per-second+)
-          (%make-instant seconds (* (floor nanos unit-nanos) unit-nanos))
-          (let ((seconds-per-unit (truncate unit-nanos +nanos-per-second+)))
-            (%make-instant
-             (* (floor seconds seconds-per-unit) seconds-per-unit)
-             0)))))
-
+      (if (<= unit-nanos +nanos-per-second+) (%make-instant seconds (* (floor nanos unit-nanos) unit-nanos))
+        (let ((seconds-per-unit (truncate unit-nanos +nanos-per-second+)))
+          (%make-instant (* (floor seconds seconds-per-unit) seconds-per-unit) 0)))))
   (defun instant-truncated-to (instant unit)
     "Returns INSTANT truncated down to fixed-width UNIT on the UTC timeline."
     (check-type instant instant)
     (%instant-truncated-to-unit instant (%fixed-unit-nanos unit)))
-
   (defun instant-rounded-to (instant unit &key (mode :half-even))
     "Return INSTANT rounded to fixed-width UNIT on the UTC timeline.
 
 MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO,
 :HALF-UP, or :HALF-EVEN.  :HALF-EVEN is the default."
     (check-type instant instant)
-    (multiple-value-bind (seconds nanos)
-        (floor (%round-fixed-unit-nanos
-                (+ (* (instant-epoch-second instant) +nanos-per-second+)
-                   (instant-nanosecond instant))
-                (%fixed-unit-nanos unit)
-                mode)
-               +nanos-per-second+)
+    (multiple-value-bind (seconds nanos) (floor
+        (%round-fixed-unit-nanos
+          (+
+            (* (instant-epoch-second instant) +nanos-per-second+)
+            (instant-nanosecond instant))
+          (%fixed-unit-nanos unit)
+          mode)
+        +nanos-per-second+)
       (make-instant seconds nanos))))
