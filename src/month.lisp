@@ -29,20 +29,10 @@
 
 (defun month-value (month)
   "Return the ISO-8601 number for MONTH, from 1 for :JANUARY through 12 for :DECEMBER."
-  (case month
-    (:january 1)
-    (:february 2)
-    (:march 3)
-    (:april 4)
-    (:may 5)
-    (:june 6)
-    (:july 7)
-    (:august 8)
-    (:september 9)
-    (:october 10)
-    (:november 11)
-    (:december 12)
-    (otherwise (error 'invalid-month :value month))))
+  (let ((index (position month *iso-month-names*)))
+    (if index
+        (1+ index)
+        (error 'invalid-month :value month))))
 
 (defun month-from-value (value)
   "Return the ISO month keyword for integral VALUE in the range 1 through 12."

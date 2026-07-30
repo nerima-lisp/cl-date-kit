@@ -66,6 +66,7 @@
     (%write-iso-year (local-date-year date) stream)
     (format stream "-~2,'0D-~2,'0D" (local-date-month date) (local-date-day date)))
   (defun format-local-date (date)
+    "Formats DATE as the canonical ISO 8601 extended calendar-date form YYYY-MM-DD."
     (with-output-to-string (stream)
       (%write-local-date date stream))))
 
@@ -238,6 +239,7 @@
     (%digits-p string 5 8)))
 
 (defun parse-local-date (string)
+  "Parses an ISO 8601 calendar, ordinal, or week date in extended or basic notation."
   (with-date-time-parse-error
     (string "ISO 8601 calendar, ordinal, or week date")
     (unless (stringp string)

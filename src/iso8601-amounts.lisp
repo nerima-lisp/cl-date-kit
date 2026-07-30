@@ -32,6 +32,7 @@
                     (string-right-trim "0" (format nil "~9,'0D" nanos))))))))))))
 
 (defun parse-duration (string)
+  "Parses an ISO 8601 duration of the form [-]P[nD][T[nH][nM][nS]]."
   (unless (and (stringp string) (plusp (length string)))
     (error
       'date-time-parse-error
@@ -143,6 +144,7 @@
 
 ;;; --- Period ("PnYnMnD") -------------------------------------------------------
 (defun format-period (p)
+  "Formats P as a canonical ISO 8601 period of the form PnYnMnD."
   (if (period-zero-p p) "P0D"
     (with-output-to-string (s)
       (write-char #\P s)
@@ -162,6 +164,7 @@
     (* sign (%parse-fixed-integer string start end expected))))
 
 (defun parse-period (string)
+  "Parses an ISO 8601 period of the form PnYnMnD, also accepting nW."
   (unless (and (stringp string) (> (length string) 1))
     (error (quote date-time-parse-error) :string string :expected "PnYnMnD"))
   (let ((pos 0)
@@ -213,6 +216,7 @@
       (make-period :years years :months months :days days))))
 
 (defun format-interval (interval)
+  "Formats INTERVAL as canonical ISO 8601 instant-interval START/END."
   (concatenate
     (quote string)
     (format-instant (interval-start interval))

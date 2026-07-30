@@ -89,27 +89,21 @@
   (check-type local-date-time local-date-time)
   (check-type offset zone-offset)
   (check-type zone (or time-zone zone-offset))
-  (multiple-value-bind (kind first-offset second-offset) (%classify-local-date-time local-date-time zone)
-    (let* ((offset-seconds (zone-offset-total-seconds offset))
-           (resolved-offset
-          (case kind
-            (:normal
-              (and (= offset-seconds (zone-offset-total-seconds first-offset)) first-offset))
-            (:overlap
-              (cond
-                ((= offset-seconds (zone-offset-total-seconds first-offset)) first-offset)
-                ((and second-offset (= offset-seconds (zone-offset-total-seconds second-offset)))
-                  second-offset)))
-            (:gap nil))))
-      (if resolved-offset (%make-zoned-date-time local-date-time zone resolved-offset)
-        (error
-          (quote invalid-zoned-date-time-offset)
-          :local-date-time
-          local-date-time
-          :offset
-          offset
-          :zone
-          zone)))))
+  (let ((resolved-offset
+          (find
+            (zone-offset-total-seconds offset)
+            (possible-offsets-for-local-date-time local-date-time zone)
+            :key
+            #'zone-offset-total-seconds)))
+    (if resolved-offset (%make-zoned-date-time local-date-time zone resolved-offset)
+      (error
+        (quote invalid-zoned-date-time-offset)
+        :local-date-time
+        local-date-time
+        :offset
+        offset
+        :zone
+        zone))))
 
 (defun local-date-time-at-zone (local-date-time zone &key (disambiguation :compatible) preferred-offset)
   "Resolves LOCAL-DATE-TIME in ZONE using DISAMBIGUATION."
@@ -144,15 +138,16 @@
       (zoned-date-time-offset zoned-date-time)
       (zoned-date-time-offset zoned-date-time)))
   (defun %zoned-date-time-with-offset-at-overlap (zoned-date-time position)
-    (multiple-value-bind (kind first-offset second-offset) (%classify-local-date-time
-        (zoned-date-time-local zoned-date-time)
-        (zoned-date-time-zone zoned-date-time))
-      (if (eq kind :overlap) (%make-zoned-date-time
+    (let ((offsets
+          (possible-offsets-for-local-date-time
+            (zoned-date-time-local zoned-date-time)
+            (zoned-date-time-zone zoned-date-time))))
+      (if (= (length offsets) 2) (%make-zoned-date-time
           (zoned-date-time-local zoned-date-time)
           (zoned-date-time-zone zoned-date-time)
           (ecase position
-            (:earlier first-offset)
-            (:later second-offset)))
+            (:earlier (first offsets))
+            (:later (second offsets))))
         zoned-date-time))))
 
 (defun zoned-date-time-with-earlier-offset-at-overlap (zoned-date-time)
@@ -227,24 +222,14 @@
   "Resolves LOCAL in the ZONED-DATE-TIME zone, retaining its offset when valid."
   (let* ((zone (zoned-date-time-zone zoned-date-time))
          (old-offset (zoned-date-time-offset zoned-date-time))
-         (old-offset-seconds (zone-offset-total-seconds old-offset)))
-    (multiple-value-bind (kind first-offset second-offset) (%classify-local-date-time local zone)
-      (let ((retained-offset
-            (case kind
-              (:normal
-                (and
-                  (= old-offset-seconds (zone-offset-total-seconds first-offset))
-                  first-offset))
-              (:overlap
-                (cond
-                  ((= old-offset-seconds (zone-offset-total-seconds first-offset)) first-offset)
-                  ((and
-                      second-offset
-                      (= old-offset-seconds (zone-offset-total-seconds second-offset)))
-                    second-offset)))
-              (:gap nil))))
-        (if retained-offset (%make-zoned-date-time local zone retained-offset)
-          (zoned-date-time-of-local local zone))))))
+         (retained-offset
+          (find
+            (zone-offset-total-seconds old-offset)
+            (possible-offsets-for-local-date-time local zone)
+            :key
+            #'zone-offset-total-seconds)))
+    (if retained-offset (%make-zoned-date-time local zone retained-offset)
+      (zoned-date-time-of-local local zone))))
 
 (defun zoned-date-time-with-year (zoned-date-time year)
   "Returns ZONED-DATE-TIME with YEAR, resolved in its existing zone."

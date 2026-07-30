@@ -23,10 +23,13 @@
         (local-time-second time)
         (local-time-nanosecond time))))
   (defun format-local-time (time)
+    "Formats TIME as the canonical ISO 8601 form HH:MM:SS[.nnnnnnnnn]."
     (with-output-to-string (stream)
       (%write-local-time time stream))))
 
 (defun parse-local-time (string)
+  "Parses an ISO 8601 extended (HH:MM:SS) or basic (HHMMSS) time, with an
+optional fractional-second suffix."
   (with-date-time-parse-error
     (string "HH:MM:SS[.nnnnnnnnn] or HHMMSS[.nnnnnnnnn]")
     (let* ((length (and (stringp string) (length string)))
@@ -87,10 +90,12 @@
     (write-char #\T stream)
     (%write-local-time (local-date-time-time date-time) stream))
   (defun format-local-date-time (dt)
+    "Formats DT as the canonical ISO 8601 form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]."
     (with-output-to-string (stream)
       (%write-local-date-time dt stream))))
 
 (defun parse-local-date-time (string)
+  "Parses an ISO 8601 date-time of the form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]."
   (with-date-time-parse-error
     (string "YYYY-MM-DDTHH:MM:SS")
     (let ((sep (or (position #\T string) (position #\t string))))
@@ -140,6 +145,7 @@
 
 ;;; --- Instant ---------------------------------------------------------------
 (defun format-instant (instant)
+  "Formats INSTANT as the canonical ISO 8601 UTC form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]Z."
   (with-output-to-string (stream)
     (%write-local-date-time
       (local-date-time-of-instant instant (zone-offset-utc))
@@ -185,6 +191,7 @@
                 second)
               0))))))
   (defun parse-instant (string)
+    "Parses an ISO 8601 date-time STRING with a required offset or Z suffix as an INSTANT."
     (or
       (%parse-canonical-utc-instant string)
       (multiple-value-bind (local-date-time offset) (%parse-local-date-time-and-offset string)
@@ -202,6 +209,7 @@
               (if (zerop seconds) (format stream "~A~2,'0D:~2,'0D" sign hours minutes)
                 (format stream "~A~2,'0D:~2,'0D:~2,'0D" sign hours minutes seconds))))))))
   (defun format-zone-offset (offset)
+    "Formats OFFSET as Z or a signed ISO 8601 UTC offset of the form +HH:MM[:SS]."
     (with-output-to-string (stream)
       (%write-zone-offset offset stream))))
 
@@ -287,6 +295,7 @@
 
 ;;; --- OffsetDateTime ---------------------------------------------------------
 (defun format-offset-date-time (offset-date-time)
+  "Formats OFFSET-DATE-TIME as an ISO 8601 date-time with its numeric UTC offset."
   (with-output-to-string (stream)
     (%write-local-date-time
       (offset-date-time-local-date-time offset-date-time)
@@ -300,6 +309,7 @@
 
 ;;; --- OffsetTime -------------------------------------------------------------
 (defun format-offset-time (offset-time)
+  "Formats OFFSET-TIME as an ISO 8601 time with its numeric UTC offset."
   (with-output-to-string (stream)
     (%write-local-time (offset-time-local-time offset-time) stream)
     (%write-zone-offset (offset-time-offset offset-time) stream)))
@@ -337,6 +347,7 @@
 
 ;;; --- ZonedDateTime -----------------------------------------------------------
 (defun format-zoned-date-time (zoned-date-time)
+  "Formats ZONED-DATE-TIME as an ISO 8601 date-time with its offset and, for a named zone, a bracketed [Zone/Id] suffix."
   (concatenate
     'string
     (format-local-date-time (zoned-date-time-local zoned-date-time))
