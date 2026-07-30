@@ -5,7 +5,7 @@
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.2.0"
   :homepage "https://github.com/nerima-lisp/cl-date-kit"
   :bug-tracker "https://github.com/nerima-lisp/cl-date-kit/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-date-kit.git")
@@ -58,7 +58,7 @@
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.2.0"
   :homepage "https://github.com/nerima-lisp/cl-date-kit"
   :bug-tracker "https://github.com/nerima-lisp/cl-date-kit/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-date-kit.git")

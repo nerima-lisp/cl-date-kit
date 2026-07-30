@@ -104,7 +104,7 @@ and `O(K)` merge storage without materializing unbounded schedules. Returning
 ```nix
 # flake.nix
 inputs.cl-date-kit = {
-  url = "github:nerima-lisp/cl-date-kit/v0.1.0";
+  url = "github:nerima-lisp/cl-date-kit/v0.2.0";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 ```

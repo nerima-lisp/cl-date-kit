@@ -730,6 +730,10 @@ Quote literal text with apostrophes and escape an apostrophe with `''`.
 full month names, vectors of 7 abbreviated and full weekday names, and
 nonempty AM/PM strings. It defensively copies the supplied text. Custom locales
 are not registered globally; pass the resulting object through `:LOCALE`.
+`FIND-DATE-TIME-LOCALE` looks up a bundled locale (`:EN` or `:JA`) by keyword.
+A `DATE-TIME-LOCALE`'s fields are readable back out through
+`DATE-TIME-LOCALE-NAME`, `DATE-TIME-LOCALE-SHORT-MONTHS`/`-MONTHS`,
+`DATE-TIME-LOCALE-SHORT-WEEKDAYS`/`-WEEKDAYS`, and `DATE-TIME-LOCALE-AM`/`-PM`.
 
 `LOCAL-DATE`, `LOCAL-TIME`, `LOCAL-DATE-TIME`, `OFFSET-DATE-TIME`,
 `OFFSET-TIME`, `ZONED-DATE-TIME`, and `INSTANT` are supported. A pattern that asks a value for
