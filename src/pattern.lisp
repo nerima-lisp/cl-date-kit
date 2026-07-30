@@ -11,8 +11,70 @@
 
 (defparameter +pattern-fields+ "yMdDYweEHhmsSXVAza")
 
+(defstruct (pattern-field-spec (:constructor %make-pattern-field-spec)) "The complete definition of one pattern field: its character, its width rule, and the writer/reader that implement it. Both WRITER and READER are mandatory, so a field can never be registered for validation without also being registered for formatting and parsing."
+  (char
+    (error "a pattern field spec requires a character")
+    :type
+    character
+    :read-only
+    t)
+  (validate nil :type (or null function) :read-only t)
+  (writer
+    (error "a pattern field spec requires a writer")
+    :type
+    function
+    :read-only
+    t)
+  (reader
+    (error "a pattern field spec requires a reader")
+    :type
+    function
+    :read-only
+    t))
+
+(defparameter *pattern-fields* (make-hash-table :test #'eql)
+  "Maps a pattern field character to its complete PATTERN-FIELD-SPEC. Populated exclusively by DEFINE-PATTERN-FIELD, so every field's width rule, writer, and reader live together at one call site instead of three independently maintained per-field dispatches.")
+
+(defmacro define-pattern-field (char &key validate write read)
+  "Register CHAR's complete pattern field definition in *PATTERN-FIELDS*: its
+width rule (VALIDATE, a form evaluated as (PATTERN FIELD WIDTH) that should
+signal via %PATTERN-ERROR when WIDTH is unsupported), its WRITE clause (a
+form evaluated as (STREAM FIELD WIDTH DATE TIME OFFSET ZONE INSTANT PATTERN
+LOCALE) that writes to STREAM), and its READ clause (a form evaluated as
+(STRING POSITION FIELD WIDTH REMAINING PATTERN LOCALE EXPECTED) that returns
+(VALUES value end-position)). Wrap a clause in PROGN when it needs more than
+one form.
+
+WRITE and READ are mandatory: this macro errors at macroexpansion time if
+either is omitted, so a field can never be accepted by +PATTERN-FIELDS+ and
+%VALIDATE-PATTERN-FIELD while silently doing nothing when formatted or
+parsed -- the exact shape of bug this table exists to prevent."
+  (unless write
+    (error "DEFINE-PATTERN-FIELD ~S: a :write clause is required" char))
+  (unless read
+    (error "DEFINE-PATTERN-FIELD ~S: a :read clause is required" char))
+  `(setf (gethash ,char *pattern-fields*) (%make-pattern-field-spec
+      :char
+      ,char
+      :validate
+      (lambda (pattern field width)
+        (declare (ignorable pattern field width))
+        ,validate)
+      :writer
+      (lambda (stream field width date time offset zone instant pattern locale)
+        (declare (ignorable stream field width date time offset zone instant pattern locale))
+        ,write)
+      :reader
+      (lambda (string position field width remaining pattern locale)
+        (declare (ignorable string position field width remaining pattern locale))
+        (let ((expected (format nil "field ~C in pattern ~S" field pattern)))
+          (declare (ignorable expected))
+          ,read)))))
+
 (defun %pattern-field-p (character)
-  (and (alpha-char-p character) (find character +pattern-fields+ :test #'char=)))
+  (and
+    (alpha-char-p character)
+    (nth-value 1 (gethash character *pattern-fields*))))
 
 (defun %pattern-error (pattern control &rest arguments)
   (error
@@ -22,26 +84,21 @@
     :reason
     (apply #'format nil control arguments)))
 
+(defun %pattern-field-spec (pattern field)
+  "Look up FIELD's complete PATTERN-FIELD-SPEC, or signal a format error if
+FIELD was never registered via DEFINE-PATTERN-FIELD."
+  (or
+    (gethash field *pattern-fields*)
+    (%pattern-error pattern "unsupported field ~C" field)))
+
 (defun %validate-pattern-field (pattern field width)
   (unless (plusp width)
     (%pattern-error pattern "field ~C has no width" field))
-  (when (and
-      (member field (list #\S #\X))
-      (>
-        width
-        (if (char= field #\S) 9
-          3)))
-    (%pattern-error pattern "field ~C has unsupported width ~D" field width))
-  (when (and (char= field #\M) (> width 4))
-    (%pattern-error pattern "field ~C only supports widths 1 through 4" field))
-  (when (and (char= field #\E) (not (member width (list 3 4))))
-    (%pattern-error pattern "field ~C only supports widths 3 or 4" field))
-  (when (and (member field (list #\a #\V #\z)) (/= width 1))
-    (%pattern-error pattern "field ~C only supports width 1" field))
-  (when (and (member field (list #\d #\w #\e #\H #\h #\m #\s)) (> width 2))
-    (%pattern-error pattern "field ~C only supports widths 1 or 2" field))
-  (when (and (char= field #\D) (> width 3))
-    (%pattern-error pattern "field ~C only supports widths 1 through 3" field)))
+  (funcall
+    (pattern-field-spec-validate (%pattern-field-spec pattern field))
+    pattern
+    field
+    width))
 
 (defun %compile-date-time-pattern (pattern)
   (unless (stringp pattern)
@@ -151,110 +208,18 @@ quotes produce one quote."
                   (format stream "~C~2,'0D:~2,'0D:~2,'0D" sign hours minutes seconds))))))))))
 
 (defun %write-pattern-field (stream field width date time offset zone instant pattern locale)
-  (case field
-    (#\y
-      (%write-pattern-year
-        stream
-        (local-date-year (%require-pattern-field date pattern field "a date"))
-        width))
-    (#\M
-      (let ((month (local-date-month (%require-pattern-field date pattern field "a date"))))
-        (if (< width 3) (%write-pattern-number stream month width)
-          (write-string (%date-time-locale-month-name locale month width) stream))))
-    (#\d
-      (%write-pattern-number
-        stream
-        (local-date-day (%require-pattern-field date pattern field "a date"))
-        width))
-    (#\D
-      (%write-pattern-number
-        stream
-        (day-of-year (%require-pattern-field date pattern field "a date"))
-        width))
-    (#\Y
-      (%write-pattern-year
-        stream
-        (local-date-week-based-year
-          (%require-pattern-field date pattern field "a date"))
-        width))
-    (#\w
-      (%write-pattern-number
-        stream
-        (local-date-week-of-week-based-year
-          (%require-pattern-field date pattern field "a date"))
-        width))
-    (#\e
-      (%write-pattern-number
-        stream
-        (%iso-weekday-number (%require-pattern-field date pattern field "a date"))
-        width))
-    (#\E
-      (write-string
-        (%date-time-locale-weekday-name
-          locale
-          (day-of-week (%require-pattern-field date pattern field "a date"))
-          width)
-        stream))
-    ((#\H #\h)
-      (%write-pattern-number
-        stream
-        (let ((hour (local-time-hour (%require-pattern-field time pattern field "a time"))))
-          (if (char= field #\H) hour
-            (if (zerop hour) 12
-              (if (> hour 12) (- hour 12)
-                hour))))
-        width))
-    (#\m
-      (%write-pattern-number
-        stream
-        (local-time-minute (%require-pattern-field time pattern field "a time"))
-        width))
-    (#\s
-      (%write-pattern-number
-        stream
-        (local-time-second (%require-pattern-field time pattern field "a time"))
-        width))
-    (#\a
-      (write-string
-        (%date-time-locale-meridiem
-          locale
-          (local-time-hour (%require-pattern-field time pattern field "a time")))
-        stream))
-    (#\S
-      (%write-pattern-number
-        stream
-        (floor
-          (local-time-nanosecond (%require-pattern-field time pattern field "a time"))
-          (expt 10 (- 9 width)))
-        width))
-    (#\A
-      (%write-pattern-number
-        stream
-        (floor
-          (local-time-to-nano-of-day (%require-pattern-field time pattern field "a time"))
-          1000000)
-        width))
-    (#\X
-      (%write-pattern-offset
-        stream
-        (%require-pattern-field offset pattern field "an offset")
-        width
-        pattern))
-    (#\V
-      (let ((resolved-zone (%require-pattern-field zone pattern field "an IANA time zone")))
-        (if (time-zone-p resolved-zone) (write-string (time-zone-name resolved-zone) stream)
-          (%pattern-error pattern "field V requires an IANA time zone"))))
-    (#\z
-      (let ((resolved-zone (%require-pattern-field zone pattern field "an IANA time zone"))
-            (resolved-instant (%require-pattern-field instant pattern field "an instant")))
-        (unless (time-zone-p resolved-zone)
-          (%pattern-error pattern "field z requires an IANA time zone"))
-        (write-string
-          (or
-            (zone-state-abbreviation
-              (zone-state-for-instant resolved-zone resolved-instant))
-            (%pattern-error pattern "field z has no abbreviation for the active zone state"))
-          stream)))))
+  (funcall
+    (pattern-field-spec-writer (%pattern-field-spec pattern field))
+    stream
+    field
+    width
+    date
+    time
+    offset
+    zone
+    instant
+    pattern
+    locale))
 
 (defun %pattern-context (value formatter zone)
   (cond

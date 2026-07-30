@@ -337,7 +337,15 @@
         date-time-parse-error
         (parse-date-time-with-pattern
           "EEEE, MMMM d yyyy HH:mm a"
-          "Thursday, February 29 2024 13:05 AM"))))
+          "Thursday, February 29 2024 13:05 AM")))
+    (it
+      "registers every pattern field with both a writer and a reader"
+      (loop for character across cl-date-kit::+pattern-fields+
+            for spec = (gethash character cl-date-kit::*pattern-fields*)
+            do (progn
+          (expect spec :to-be-truthy)
+          (expect (functionp (cl-date-kit::pattern-field-spec-writer spec)) :to-be-truthy)
+          (expect (functionp (cl-date-kit::pattern-field-spec-reader spec)) :to-be-truthy)))))
   (describe
     "pattern parser boundary behavior"
     (it
