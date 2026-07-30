@@ -68,3 +68,47 @@ offset *before* it and under the offset *after* it:
 This mirrors the approach used internally by java.time's `ZoneRules` and
 similar logic in chrono-tz, applied here against TZif's transition table
 directly rather than against a higher-level rule object.
+
+## Continuation-passing style, used where it separates generation from selection
+
+This library reaches for an explicit visitor/continuation argument -- a
+function the callee invokes instead of allocating and returning a
+collection -- in two situations, and stays with ordinary return values and
+`MULTIPLE-VALUE-BIND` everywhere else. Forcing every function into
+continuation-passing style would fight the "human readable" goal as much as
+it would serve it; CPS earns its place only where it removes real
+complexity.
+
+**Streaming iteration over an unbounded or expensive-to-materialize
+sequence.** `MAP-RRULE-OCCURRENCES`, `MAP-RRULE-SET-OCCURRENCES`, and
+`MAP-LOCAL-DATE-INTERVAL` take a callback and call it once per occurrence
+(the `DO-*` macros are `LOOP`-style sugar over the same `MAP-*` functions).
+An RRULE without `COUNT`/`UNTIL` can describe an infinite recurrence;
+returning a list is not an option, and a lazy sequence abstraction would be
+a second concept to learn on top of Lisp's own function-calling
+convention. `RRULE-CANDIDATES.LISP`'s internal candidate generators
+(`%RRULE-DATE-CANDIDATES`, `%RRULE-LOCAL-CANDIDATES`) take an *optional*
+visitor for the same reason at one layer down: with a visitor, a candidate
+that BYSETPOS will discard is never consed into a throwaway list element.
+
+**Separating "what are the candidates" from "which one wins" in a search.**
+`%SELECT-POSIX-ZONE-TRANSITION` (`zone.lisp`) answers "the nearest POSIX-TZ
+footer transition in DIRECTION from INSTANT." The two questions -- which
+transitions are eligible, and which eligible transition is nearest -- used
+to live in one nested loop that accumulated the answer through a mutable
+`SETF`. Splitting the eligibility scan into a CPS producer,
+`%MAP-CANDIDATE-POSIX-ZONE-TRANSITIONS`, that calls a visitor once per
+eligible transition, and reducing over that visitor with a
+direction-appropriate comparator closure in `%SELECT-POSIX-ZONE-TRANSITION`
+itself, turns one function that did two things into two functions that
+each do one -- the same shape as the streaming-iteration case, applied to
+a search instead of an unbounded enumeration.
+
+**Destination-passing, a close relative.** `ISO8601.LISP`'s `%WRITE-*`
+functions (`%WRITE-LOCAL-DATE-TIME`, `%WRITE-ZONE-OFFSET`, and so on) take
+a `STREAM` argument and write to it rather than returning a string, so a
+composite formatter like `FORMAT-OFFSET-DATE-TIME` writes its date, time,
+and offset pieces directly onto one shared stream inside a single
+`WITH-OUTPUT-TO-STRING`, instead of allocating and concatenating three
+intermediate strings. `PATTERN.LISP`'s `%WRITE-PATTERN-FIELD` follows the
+same shape for the compiled pattern formatter.
