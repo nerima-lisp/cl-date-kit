@@ -185,29 +185,35 @@ For daylight-saving-aware calendar days, use PERIOD-OF-DAYS."
   "Whole fixed 24-hour days in D, truncating a fractional day toward zero."
   (duration-to-days d))
 
-(defun duration-to-hours-part (d)
-  "The signed hour remainder in D after whole fixed days."
-  (rem (duration-to-hours d) 24))
+(defmacro define-duration-remainder-part (name whole-unit-function modulus documentation)
+  "Define NAME as the signed remainder of (WHOLE-UNIT-FUNCTION D) modulo MODULUS."
+  `(defun ,name (d)
+     ,documentation
+     (rem (,whole-unit-function d) ,modulus)))
 
-(defun duration-to-minutes-part (d)
-  "The signed minute remainder in D after whole hours."
-  (rem (duration-to-minutes d) 60))
+(define-duration-remainder-part duration-to-hours-part duration-to-hours 24
+  "The signed hour remainder in D after whole fixed days.")
 
-(defun duration-to-seconds-part (d)
-  "The signed whole-second remainder in D after whole minutes."
-  (rem (duration-seconds d) 60))
+(define-duration-remainder-part duration-to-minutes-part duration-to-minutes 60
+  "The signed minute remainder in D after whole hours.")
 
-(defun duration-to-millis-part (d)
-  "The non-negative millisecond part of D's normalized nanosecond field."
-  (truncate (duration-nanos d) 1000000))
+(define-duration-remainder-part duration-to-seconds-part duration-seconds 60
+  "The signed whole-second remainder in D after whole minutes.")
 
-(defun duration-to-micros-part (d)
-  "The non-negative microsecond part of D's normalized nanosecond field."
-  (truncate (duration-nanos d) 1000))
+(defmacro define-duration-nanos-part (name divisor documentation)
+  "Define NAME as D's normalized nanosecond field truncated by DIVISOR."
+  `(defun ,name (d)
+     ,documentation
+     (truncate (duration-nanos d) ,divisor)))
 
-(defun duration-to-nanos-part (d)
-  "The non-negative nanosecond part of D's normalized representation."
-  (duration-nanos d))
+(define-duration-nanos-part duration-to-millis-part 1000000
+  "The non-negative millisecond part of D's normalized nanosecond field.")
+
+(define-duration-nanos-part duration-to-micros-part 1000
+  "The non-negative microsecond part of D's normalized nanosecond field.")
+
+(define-duration-nanos-part duration-to-nanos-part 1
+  "The non-negative nanosecond part of D's normalized representation.")
 
 (progn
   (defun %duration-truncated-to-unit (duration unit-nanos)
@@ -294,17 +300,19 @@ Methods are provided for matching INSTANT, LOCAL-TIME, LOCAL-DATE-TIME,
 OFFSET-TIME, OFFSET-DATE-TIME, and ZONED-DATE-TIME values. Local values use
 their local timeline; offset and zoned values use the absolute timeline."))
 
+(defparameter *duration-rounding-modes*
+  '(:floor :ceiling :toward-zero :away-from-zero :half-up :half-even)
+  "Valid MODE values accepted by DURATION-ROUNDED-TO.")
+
 (progn
   (defun %round-fixed-unit-nanos (total-nanos unit-nanos mode)
     (check-type total-nanos integer)
     (check-type unit-nanos (integer 1))
-    (unless (member mode (quote (:floor :ceiling :toward-zero :away-from-zero
-                                 :half-up :half-even)))
+    (unless (member mode *duration-rounding-modes*)
       (error (quote type-error)
              :datum mode
              :expected-type
-             (quote (member :floor :ceiling :toward-zero :away-from-zero
-                            :half-up :half-even))))
+             (cons 'member *duration-rounding-modes*)))
     (multiple-value-bind (floor-quotient remainder)
         (floor total-nanos unit-nanos)
       (let ((ceiling-quotient (if (zerop remainder)
