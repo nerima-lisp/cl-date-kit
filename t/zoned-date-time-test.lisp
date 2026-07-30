@@ -368,7 +368,17 @@
      (expect (zone-offset-total-seconds (zoned-date-time-offset value))
              :to-be -18000)))))
 
-(describe "ZonedDateTime epoch-second conversions" (it "round-trips absolute fields through UTC and New York DST" (dolist (case (list (list -1 999999999 (find-time-zone "UTC")) (list 1710055800 123456789 (find-time-zone "America/New_York")))) (destructuring-bind (seconds nanosecond zone) case (let ((value (cl-date-kit:zoned-date-time-of-epoch-second seconds nanosecond zone))) (expect (cl-date-kit:zoned-date-time-to-epoch-second value) :to-be seconds) (expect (zoned-date-time-nanosecond value) :to-be nanosecond) (expect (eq (zoned-date-time-zone value) zone) :to-be-truthy))))))
+(describe "ZonedDateTime epoch-second conversions"
+  (it-each
+      ((-1 999999999 "UTC")
+       (1710055800 123456789 "America/New_York"))
+      "round-trips absolute fields through ~A"
+      (seconds nanosecond zone-name)
+    (let* ((zone (find-time-zone zone-name))
+           (value (cl-date-kit:zoned-date-time-of-epoch-second seconds nanosecond zone)))
+      (expect (cl-date-kit:zoned-date-time-to-epoch-second value) :to-be seconds)
+      (expect (zoned-date-time-nanosecond value) :to-be nanosecond)
+      (expect (eq (zoned-date-time-zone value) zone) :to-be-truthy))))
 
 (describe "ZONED-DATE-TIME overlap offset selectors"
   (it "selects either instant without changing the local fields"

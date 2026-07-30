@@ -5,7 +5,7 @@
   ;; DESCRIBE clashes with CL:DESCRIBE; nothing else needs shadowing.
   (:shadowing-import-from #:cl-weave #:describe)
   (:import-from #:cl-weave
-   #:it #:expect #:signals #:run-all)
+   #:it #:expect #:signals #:run-all #:it-each #:it-property #:gen-integer)
   (:import-from #:cl-date-kit #:with-clock)
   (:export #:run-tests))
 

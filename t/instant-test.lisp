@@ -12,11 +12,12 @@
     "INSTANT-EPOCH is 1970-01-01T00:00:00Z"
     (expect (instant-epoch-second (instant-epoch)) :to-be 0)
     (expect (instant-nanosecond (instant-epoch)) :to-be 0))
-  (it
-    "epoch millisecond and microsecond constructors round-trip integers"
-    (dolist (value (list -1001 -1 0 1 1001))
-      (expect (instant-to-epoch-millis (instant-of-epoch-millis value)) :to-be value)
-      (expect (instant-to-epoch-micros (instant-of-epoch-micros value)) :to-be value)))
+  (it-each
+      ((-1001) (-1) (0) (1) (1001))
+      "~A round-trips through epoch millisecond and microsecond constructors"
+      (value)
+    (expect (instant-to-epoch-millis (instant-of-epoch-millis value)) :to-be value)
+    (expect (instant-to-epoch-micros (instant-of-epoch-micros value)) :to-be value))
   (it
     "epoch conversions round down sub-unit negative instants"
     (let ((instant (make-instant -1 999999999)))

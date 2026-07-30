@@ -12,27 +12,18 @@
   (it
     "DURATION-ZERO has zero seconds and nanos"
     (expect (duration-zero-p (duration-zero)) :to-be-truthy))
-  (it
-    "rejects non-integral constructor arguments"
-    (dolist (constructor
-        (list
-          (lambda ()
-            (duration-of-nanos 1/2))
-          (lambda ()
-            (duration-of-seconds 1/2))
-          (lambda ()
-            (duration-of-seconds 1 1/2))
-          (lambda ()
-            (duration-of-millis 1/2))
-          (lambda ()
-            (duration-of-micros 1/2))
-          (lambda ()
-            (duration-of-minutes 1/2))
-          (lambda ()
-            (duration-of-hours 1/2))
-          (lambda ()
-            (duration-of-days 1/2))))
-      (signals type-error (funcall constructor)))))
+  (it-each
+      ((duration-of-nanos (1/2))
+       (duration-of-seconds (1/2))
+       (duration-of-seconds (1 1/2))
+       (duration-of-millis (1/2))
+       (duration-of-micros (1/2))
+       (duration-of-minutes (1/2))
+       (duration-of-hours (1/2))
+       (duration-of-days (1/2)))
+      "~A rejects the non-integral argument(s) ~S"
+      (constructor args)
+    (signals type-error (apply (symbol-function constructor) args))))
 
 (describe
   "duration arithmetic"
@@ -69,54 +60,44 @@
     (let ((a (duration-of-seconds 5 250000000))
           (b (duration-of-seconds 2 500000000)))
       (expect (duration= (duration-minus (duration-plus a b) b) a) :to-be-truthy)))
-  (it
-    "adds and subtracts every supported fixed unit"
-    (let ((zero (duration-zero)))
-      (dolist (entry
-          (list
-            (list #'duration-plus-nanos #'duration-minus-nanos 1 (duration-of-nanos 1))
-            (list #'duration-plus-micros #'duration-minus-micros 1 (duration-of-micros 1))
-            (list #'duration-plus-millis #'duration-minus-millis 1 (duration-of-millis 1))
-            (list
-              #'duration-plus-seconds
-              #'duration-minus-seconds
-              1
-              (duration-of-seconds 1))
-            (list
-              #'duration-plus-minutes
-              #'duration-minus-minutes
-              1
-              (duration-of-minutes 1))
-            (list #'duration-plus-hours #'duration-minus-hours 1 (duration-of-hours 1))
-            (list #'duration-plus-days #'duration-minus-days 1 (duration-of-days 1))))
-        (destructuring-bind (plus minus amount expected) entry
-          (let ((advanced (funcall plus zero amount)))
-            (expect (duration= advanced expected) :to-be-truthy)
-            (expect (duration= (funcall minus advanced amount) zero) :to-be-truthy))))))
+  (it-each
+      ((duration-plus-nanos duration-minus-nanos duration-of-nanos)
+       (duration-plus-micros duration-minus-micros duration-of-micros)
+       (duration-plus-millis duration-minus-millis duration-of-millis)
+       (duration-plus-seconds duration-minus-seconds duration-of-seconds)
+       (duration-plus-minutes duration-minus-minutes duration-of-minutes)
+       (duration-plus-hours duration-minus-hours duration-of-hours)
+       (duration-plus-days duration-minus-days duration-of-days))
+      "~A and ~A add and subtract one ~A unit"
+      (plus minus of)
+    (let* ((zero (duration-zero))
+           (expected (funcall (symbol-function of) 1))
+           (advanced (funcall (symbol-function plus) zero 1)))
+      (expect (duration= advanced expected) :to-be-truthy)
+      (expect (duration= (funcall (symbol-function minus) advanced 1) zero) :to-be-truthy)))
   (it
     "normalizes a negative subsecond result from unit arithmetic"
     (let ((duration (duration-minus-millis (duration-of-nanos 1) 1)))
       (expect (duration-seconds duration) :to-be -1)
       (expect (duration-nanos duration) :to-be 999000001)))
-  (it
-    "rejects non-integral fixed-unit amounts"
-    (dolist (operation
-        (list
-          #'duration-plus-nanos
-          #'duration-plus-micros
-          #'duration-plus-millis
-          #'duration-plus-seconds
-          #'duration-plus-minutes
-          #'duration-plus-hours
-          #'duration-plus-days
-          #'duration-minus-nanos
-          #'duration-minus-micros
-          #'duration-minus-millis
-          #'duration-minus-seconds
-          #'duration-minus-minutes
-          #'duration-minus-hours
-          #'duration-minus-days))
-      (signals type-error (funcall operation (duration-zero) 1/2))))
+  (it-each
+      ((duration-plus-nanos)
+       (duration-plus-micros)
+       (duration-plus-millis)
+       (duration-plus-seconds)
+       (duration-plus-minutes)
+       (duration-plus-hours)
+       (duration-plus-days)
+       (duration-minus-nanos)
+       (duration-minus-micros)
+       (duration-minus-millis)
+       (duration-minus-seconds)
+       (duration-minus-minutes)
+       (duration-minus-hours)
+       (duration-minus-days))
+      "~A rejects a non-integral amount"
+      (operation)
+    (signals type-error (funcall (symbol-function operation) (duration-zero) 1/2)))
   (it
     "DURATION-NEGATE flips the sign of a fractional duration"
     (expect
@@ -129,27 +110,27 @@
       (duration= (duration-abs (duration-of-seconds 5)) (duration-of-seconds 5))
       :to-be-truthy))
   (it
-    "DURATION-ABS negates a negative duration and fixed-unit arithmetic normalizes signed amounts"
+    "DURATION-ABS negates a negative duration"
     (expect
       (duration= (duration-abs (duration-of-seconds -5)) (duration-of-seconds 5))
-      :to-be-truthy)
-    (let ((base (duration-of-nanos 1)))
-      (dolist (entry
-          (list
-            (list #'duration-plus-nanos #'duration-minus-nanos -1)
-            (list #'duration-plus-micros #'duration-minus-micros -1)
-            (list #'duration-plus-millis #'duration-minus-millis -1)
-            (list #'duration-plus-seconds #'duration-minus-seconds -1)
-            (list #'duration-plus-minutes #'duration-minus-minutes -1)
-            (list #'duration-plus-hours #'duration-minus-hours -1)
-            (list #'duration-plus-days #'duration-minus-days -1)))
-        (destructuring-bind (plus minus amount) entry
-          (let ((advanced (funcall plus base amount)))
-            (expect
-              (duration= advanced (funcall minus base (- amount)))
-              :to-be-truthy)
-            (expect (<= 0 (duration-nanos advanced)) :to-be-truthy)
-            (expect (< (duration-nanos advanced) 1000000000) :to-be-truthy)))))))
+      :to-be-truthy))
+  (it-each
+      ((duration-plus-nanos duration-minus-nanos -1)
+       (duration-plus-micros duration-minus-micros -1)
+       (duration-plus-millis duration-minus-millis -1)
+       (duration-plus-seconds duration-minus-seconds -1)
+       (duration-plus-minutes duration-minus-minutes -1)
+       (duration-plus-hours duration-minus-hours -1)
+       (duration-plus-days duration-minus-days -1))
+      "~A and ~A normalize the signed amount ~A"
+      (plus minus amount)
+    (let* ((base (duration-of-nanos 1))
+           (advanced (funcall (symbol-function plus) base amount)))
+      (expect
+        (duration= advanced (funcall (symbol-function minus) base (- amount)))
+        :to-be-truthy)
+      (expect (<= 0 (duration-nanos advanced)) :to-be-truthy)
+      (expect (< (duration-nanos advanced) 1000000000) :to-be-truthy))))
 
 (describe
   "duration predicates and ordering"
@@ -212,10 +193,13 @@
 
 (describe
   "duration microsecond conversions"
+  (it-each
+      ((-1501) (-1) (0) (1) (1501))
+      "round-trips ~A microseconds"
+      (value)
+    (expect (duration-to-micros (duration-of-micros value)) :to-be value))
   (it
-    "round-trips integers and truncates fractional microseconds toward zero"
-    (dolist (value (list -1501 -1 0 1 1501))
-      (expect (duration-to-micros (duration-of-micros value)) :to-be value))
+    "truncates fractional microseconds toward zero"
     (expect (duration-to-micros (duration-of-nanos -1501)) :to-be -1)
     (expect (duration-to-micros (duration-of-nanos 1501)) :to-be 1)))
 
@@ -332,10 +316,13 @@
                        (duration-of-seconds 2)) :to-be-truthy)
     (expect (duration= (cl-date-kit:duration-rounded-to (duration-of-millis -2500) :seconds :mode :half-even)
                        (duration-of-seconds -2)) :to-be-truthy))
+   (it-each
+       ((:floor) (:ceiling) (:toward-zero) (:away-from-zero) (:half-up) (:half-even))
+       "preserves an exact multiple under ~A"
+       (mode)
+     (expect (duration= (cl-date-kit:duration-rounded-to (duration-of-seconds -2) :seconds :mode mode)
+                        (duration-of-seconds -2)) :to-be-truthy))
    (it
-    "preserves exact multiples and rejects invalid modes"
-    (dolist (mode (quote (:floor :ceiling :toward-zero :away-from-zero :half-up :half-even)))
-      (expect (duration= (cl-date-kit:duration-rounded-to (duration-of-seconds -2) :seconds :mode mode)
-                         (duration-of-seconds -2)) :to-be-truthy))
+    "rejects invalid rounding modes"
     (signals type-error
       (cl-date-kit:duration-rounded-to (duration-of-seconds 1) :seconds :mode :nearest)))))

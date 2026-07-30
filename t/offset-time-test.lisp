@@ -141,23 +141,23 @@
 
 (progn (describe
  "OffsetTime truncation contract"
- (it
-  "truncates every supported fixed unit while retaining the offset"
-  (let* ((offset (zone-offset-of-hours -4))
-         (value (offset-time-of 12 34 56 789123456 offset)))
-   (dolist (scenario (quote ((:nanos 12 34 56 789123456)
-                              (:micros 12 34 56 789123000)
-                              (:millis 12 34 56 789000000)
-                              (:seconds 12 34 56 0)
-                              (:minutes 12 34 0 0)
-                              (:hours 12 0 0 0)
-                              (:days 0 0 0 0))))
-    (destructuring-bind (unit hour minute second nanosecond) scenario
+ (it-each
+     ((:nanos 12 34 56 789123456)
+      (:micros 12 34 56 789123000)
+      (:millis 12 34 56 789000000)
+      (:seconds 12 34 56 0)
+      (:minutes 12 34 0 0)
+      (:hours 12 0 0 0)
+      (:days 0 0 0 0))
+     "truncates to ~A while retaining the offset"
+     (unit hour minute second nanosecond)
+   (let* ((offset (zone-offset-of-hours -4))
+          (value (offset-time-of 12 34 56 789123456 offset)))
      (expect
       (offset-time=
        (cl-date-kit:offset-time-truncated-to value unit)
        (offset-time-of hour minute second nanosecond offset))
-      :to-be-truthy)))))
+      :to-be-truthy)))
  (it
   "signals TYPE-ERROR for invalid values and units"
   (signals type-error (cl-date-kit:offset-time-truncated-to 0 :seconds))

@@ -100,10 +100,11 @@
         (length names)
         :to-be
         (length (remove-duplicates names :test (function string=))))))
-  (it
-    "resolves representative time zone names"
-    (dolist (name (list "UTC" "Asia/Tokyo" "America/New_York"))
-      (expect (time-zone-p (find-time-zone name)) :to-be-truthy)))
+  (it-each
+      (("UTC") ("Asia/Tokyo") ("America/New_York"))
+      "resolves the representative time zone name ~S"
+      (name)
+    (expect (time-zone-p (find-time-zone name)) :to-be-truthy))
   (it
     "returns a fresh list after a cached lookup"
     (let* ((first-result (cl-date-kit:available-time-zone-names))
@@ -247,13 +248,17 @@
     (expect (zone-offset-total-seconds (resolve-local-date-time (local-date-time-of 2024 11 3 1 30 0) (find-time-zone "America/New_York") :disambiguation :later))
             :to-be -18000))
 
-  (it "RESOLVE-LOCAL-DATE-TIME rejects invalid disambiguation consistently"
-    (let ((zone (find-time-zone "America/New_York")))
-      (dolist (local (list (local-date-time-of 2024 6 15 12 0 0)
-                           (local-date-time-of 2024 11 3 1 30 0)
-                           (local-date-time-of 2024 3 10 2 30 0)))
-        (signals type-error
-          (resolve-local-date-time local zone :disambiguation :invalid))))))
+  (it-each
+      ((2024 6 15 12 0 0)
+       (2024 11 3 1 30 0)
+       (2024 3 10 2 30 0))
+      "RESOLVE-LOCAL-DATE-TIME rejects :INVALID disambiguation for ~A-~A-~A ~A:~A:~A"
+      (year month day hour minute second)
+    (signals type-error
+      (resolve-local-date-time
+        (local-date-time-of year month day hour minute second)
+        (find-time-zone "America/New_York")
+        :disambiguation :invalid))))
 
 (describe
   "future TZif footer transition classification"
@@ -546,28 +551,29 @@
           :to-be
           3600)))
     (progn
-      (it
-        "uses UTC for u, g, and z suffixes"
-        (dolist (suffix (quote ("u" "g" "z")))
-          (let ((rule
-                (cl-date-kit::parse-posix-tz-string
-                  (format nil "EST5EDT,M3.2.0/2~A,M11.1.0/2~A" suffix suffix))))
-            (expect
-              (cl-date-kit::%offset-from-posix-rule
-                (+
-                  (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400)
-                  (* 1 3600)
-                  59
-                  60)
-                rule)
-              :to-be
-              -18000)
-            (expect
-              (cl-date-kit::%offset-from-posix-rule
-                (+ (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400) (* 2 3600))
-                rule)
-              :to-be
-              -14400))))
+      (it-each
+          (("u") ("g") ("z"))
+          "uses UTC for the ~A suffix"
+          (suffix)
+        (let ((rule
+              (cl-date-kit::parse-posix-tz-string
+                (format nil "EST5EDT,M3.2.0/2~A,M11.1.0/2~A" suffix suffix))))
+          (expect
+            (cl-date-kit::%offset-from-posix-rule
+              (+
+                (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400)
+                (* 1 3600)
+                59
+                60)
+              rule)
+            :to-be
+            -18000)
+          (expect
+            (cl-date-kit::%offset-from-posix-rule
+              (+ (* (local-date-to-epoch-day (make-local-date 2024 3 10)) 86400) (* 2 3600))
+              rule)
+            :to-be
+            -14400)))
       (it
         "caches POSIX transitions by rule and year"
         (let* ((rule (cl-date-kit::parse-posix-tz-string "EST5EDT,M3.2.0,M11.1.0"))
@@ -650,22 +656,21 @@
           #(10 74 83 84 45 57 10 0)
           0
           "trailing-byte")))
-    (it
-      "normalizes malformed POSIX grammar to MALFORMED-TZIF"
-      (dolist (footer
-          (list
-            ""
-            "EST"
-            "EST5:99"
-            "<EST5"
-            "EST5EDT"
-            "EST5EDT,M3.2.0/2"
-            "EST5EDT,M3.2.x/2,M11.1.0/2"
-            "EST5EDT,M3.2.0/2,M11.1.0/2/extra"
-            "EST5EDT,M3.2.0/2,M11.1.0/2,ignored"))
-        (signals
-          malformed-tzif
-          (cl-date-kit::parse-posix-tz-string footer "invalid-footer"))))
+    (it-each
+        (("")
+         ("EST")
+         ("EST5:99")
+         ("<EST5")
+         ("EST5EDT")
+         ("EST5EDT,M3.2.0/2")
+         ("EST5EDT,M3.2.x/2,M11.1.0/2")
+         ("EST5EDT,M3.2.0/2,M11.1.0/2/extra")
+         ("EST5EDT,M3.2.0/2,M11.1.0/2,ignored"))
+        "normalizes ~S to MALFORMED-TZIF"
+        (footer)
+      (signals
+        malformed-tzif
+        (cl-date-kit::parse-posix-tz-string footer "invalid-footer")))
     (it
       "accepts bracketed POSIX abbreviations with signed names"
       (let ((rule (cl-date-kit::parse-posix-tz-string "<+03>-3" "bracketed-footer")))
@@ -1263,54 +1268,55 @@
 
 (describe
   "TZif block characterization"
-  (it
-    "parses 32-bit and 64-bit transitions, initial type, indicators, and abbreviations"
-    (dolist (time-width '(4 8))
-      (multiple-value-bind (bytes expected-times) (%make-tzif-characterization-block time-width)
-        (let ((header
-              (cl-date-kit::make-%tzif-header
-                :timecnt
-                2
-                :typecnt
-                2
-                :charcnt
-                8
-                :isstdcnt
-                2
-                :isutcnt
-                2)))
-          (multiple-value-bind (times transition-types initial-type abbreviations end) (cl-date-kit::%parse-tzif-block bytes 0 header time-width "synthetic")
-            (expect (aref times 0) :to-be (aref expected-times 0))
-            (expect (aref times 1) :to-be (aref expected-times 1))
-            (expect end :to-be (length bytes))
-            (expect (cl-date-kit::tzif-type-utc-offset initial-type) :to-be 3600)
-            (expect (cl-date-kit::tzif-type-dst-p initial-type) :to-be-falsy)
-            (expect abbreviations :to-equal (format nil "STD~CDST~C" #\Null #\Null))
-            (let* ((data
-                  (cl-date-kit::make-tzif-data
-                    :transition-times
-                    times
-                    :transition-types
-                    transition-types
-                    :initial-type
-                    initial-type
-                    :abbreviation-table
-                    abbreviations))
-                   (zone (cl-date-kit::%make-time-zone "Synthetic/TZif" data nil))
-                   (first-transition (aref times 0))
-                   (second-transition (aref times 1)))
-              (expect
-                (zone-state-abbreviation
-                  (zone-state-for-instant zone (make-instant (1- first-transition))))
-                :to-equal
-                "STD")
-              (expect
-                (zone-state-abbreviation
-                  (zone-state-for-instant zone (make-instant first-transition)))
-                :to-equal
-                "DST")
-              (expect
-                (zone-state-abbreviation
-                  (zone-state-for-instant zone (make-instant second-transition)))
-                :to-equal
-                "STD"))))))))
+  (it-each
+      ((4) (8))
+      "parses ~A-bit transitions, initial type, indicators, and abbreviations"
+      (time-width)
+    (multiple-value-bind (bytes expected-times) (%make-tzif-characterization-block time-width)
+      (let ((header
+            (cl-date-kit::make-%tzif-header
+              :timecnt
+              2
+              :typecnt
+              2
+              :charcnt
+              8
+              :isstdcnt
+              2
+              :isutcnt
+              2)))
+        (multiple-value-bind (times transition-types initial-type abbreviations end) (cl-date-kit::%parse-tzif-block bytes 0 header time-width "synthetic")
+          (expect (aref times 0) :to-be (aref expected-times 0))
+          (expect (aref times 1) :to-be (aref expected-times 1))
+          (expect end :to-be (length bytes))
+          (expect (cl-date-kit::tzif-type-utc-offset initial-type) :to-be 3600)
+          (expect (cl-date-kit::tzif-type-dst-p initial-type) :to-be-falsy)
+          (expect abbreviations :to-equal (format nil "STD~CDST~C" #\Null #\Null))
+          (let* ((data
+                (cl-date-kit::make-tzif-data
+                  :transition-times
+                  times
+                  :transition-types
+                  transition-types
+                  :initial-type
+                  initial-type
+                  :abbreviation-table
+                  abbreviations))
+                 (zone (cl-date-kit::%make-time-zone "Synthetic/TZif" data nil))
+                 (first-transition (aref times 0))
+                 (second-transition (aref times 1)))
+            (expect
+              (zone-state-abbreviation
+                (zone-state-for-instant zone (make-instant (1- first-transition))))
+              :to-equal
+              "STD")
+            (expect
+              (zone-state-abbreviation
+                (zone-state-for-instant zone (make-instant first-transition)))
+              :to-equal
+              "DST")
+            (expect
+              (zone-state-abbreviation
+                (zone-state-for-instant zone (make-instant second-transition)))
+              :to-equal
+              "STD")))))))

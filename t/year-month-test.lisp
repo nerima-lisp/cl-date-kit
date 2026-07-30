@@ -8,11 +8,15 @@
     (expect (year-month-month (make-year-month 2024 2)) :to-be 2)
     (signals invalid-year-month (make-year-month 2024 13))
     (signals invalid-year-month (make-year-month 2024 1.5))
-    (signals invalid-year-month (year-month-from-proleptic-month 1.5))
-    (dolist (index (list -25 -13 -12 -1 0 1 11 12 24288))
-      (expect (year-month-to-proleptic-month
-               (year-month-from-proleptic-month index))
-              :to-be index)))
+    (signals invalid-year-month (year-month-from-proleptic-month 1.5)))
+
+  (it-each
+      ((-25) (-13) (-12) (-1) (0) (1) (11) (12) (24288))
+      "round-trips the proleptic month index ~A"
+      (index)
+    (expect (year-month-to-proleptic-month
+             (year-month-from-proleptic-month index))
+            :to-be index))
 
   (it "derives the current year-month from an injected clock and zone"
     (let ((clock (make-fixed-clock (make-instant 0))))

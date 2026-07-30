@@ -266,7 +266,19 @@
       (signals type-error
         (cl-date-kit:offset-date-time-minus-years value 1/2))))))
 
-(describe "OffsetDateTime epoch-second conversions" (it "round-trips epoch fields through fixed offsets across date boundaries" (dolist (case (list (list -1 123456789 (zone-offset-of-hours 9)) (list 0 0 (zone-offset-utc)) (list 1 999999999 (zone-offset-of-hms -3 -30 0)) (list 1234567890 42 (zone-offset-of-hours 14)))) (destructuring-bind (seconds nanosecond offset) case (let ((value (cl-date-kit:offset-date-time-of-epoch-second seconds nanosecond offset))) (expect (cl-date-kit:offset-date-time-to-epoch-second value) :to-be seconds) (expect (cl-date-kit:offset-date-time-nanosecond value) :to-be nanosecond) (expect (zone-offset= (cl-date-kit:offset-date-time-offset value) offset) :to-be-truthy))))))
+(describe "OffsetDateTime epoch-second conversions"
+  (it-each
+      ((-1 123456789 zone-offset-of-hours (9))
+       (0 0 zone-offset-utc ())
+       (1 999999999 zone-offset-of-hms (-3 -30 0))
+       (1234567890 42 zone-offset-of-hours (14)))
+      "round-trips epoch fields at ~A seconds through the offset from ~A~A"
+      (seconds nanosecond constructor args)
+    (let* ((offset (apply (symbol-function constructor) args))
+           (value (cl-date-kit:offset-date-time-of-epoch-second seconds nanosecond offset)))
+      (expect (cl-date-kit:offset-date-time-to-epoch-second value) :to-be seconds)
+      (expect (cl-date-kit:offset-date-time-nanosecond value) :to-be nanosecond)
+      (expect (zone-offset= (cl-date-kit:offset-date-time-offset value) offset) :to-be-truthy))))
 
 
 (describe "OffsetDateTime zone conversion"
@@ -307,26 +319,26 @@
 (progn (progn (progn
 (describe
  "OffsetDateTime truncation contract"
- (it
-  "truncates every supported fixed unit while retaining the date and offset"
-  (let* ((offset (zone-offset-of-hours -4))
-         (value
-          (cl-date-kit:offset-date-time-of
-           2024 2 29 12 34 56 789123456 offset)))
-   (dolist (scenario (quote ((:nanos 12 34 56 789123456)
-                              (:micros 12 34 56 789123000)
-                              (:millis 12 34 56 789000000)
-                              (:seconds 12 34 56 0)
-                              (:minutes 12 34 0 0)
-                              (:hours 12 0 0 0)
-                              (:days 0 0 0 0))))
-    (destructuring-bind (unit hour minute second nanosecond) scenario
+ (it-each
+     ((:nanos 12 34 56 789123456)
+      (:micros 12 34 56 789123000)
+      (:millis 12 34 56 789000000)
+      (:seconds 12 34 56 0)
+      (:minutes 12 34 0 0)
+      (:hours 12 0 0 0)
+      (:days 0 0 0 0))
+     "truncates to ~A while retaining the date and offset"
+     (unit hour minute second nanosecond)
+   (let* ((offset (zone-offset-of-hours -4))
+          (value
+           (cl-date-kit:offset-date-time-of
+            2024 2 29 12 34 56 789123456 offset)))
      (expect
       (cl-date-kit:offset-date-time=
        (cl-date-kit:offset-date-time-truncated-to value unit)
        (cl-date-kit:offset-date-time-of
         2024 2 29 hour minute second nanosecond offset))
-      :to-be-truthy)))))
+      :to-be-truthy)))
  (it
   "signals TYPE-ERROR for invalid values and units"
   (signals

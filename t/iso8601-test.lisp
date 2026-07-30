@@ -53,26 +53,29 @@
   (describe
     "ZoneOffset ISO 8601"
     (it
-      "formats canonical extended notation and parses UTC, basic, and extended notation"
+      "formats canonical extended notation"
       (expect
         (cl-date-kit:format-zone-offset (zone-offset-of-hms -4 -30 -15))
         :to-equal
-        "-04:30:15")
-      (dolist (case '(("Z" 0)
-            ("+09" 32400)
-            ("+0900" 32400)
-            ("+09:00" 32400)
-            ("-043015" -16215)
-            ("-04:30:15" -16215)))
-        (destructuring-bind (string total-seconds) case
-          (expect
-            (zone-offset-total-seconds (cl-date-kit:parse-zone-offset string))
-            :to-be
-            total-seconds))))
-    (it
-      "normalizes malformed and out-of-range offsets to DATE-TIME-PARSE-ERROR"
-      (dolist (string '("+" "+0" "+090" "+09:0" "+09:000" "+180001" "UTC"))
-        (signals date-time-parse-error (cl-date-kit:parse-zone-offset string))))))
+        "-04:30:15"))
+    (it-each
+        (("Z" 0)
+         ("+09" 32400)
+         ("+0900" 32400)
+         ("+09:00" 32400)
+         ("-043015" -16215)
+         ("-04:30:15" -16215))
+        "parses ~S as ~A total seconds"
+        (string total-seconds)
+      (expect
+        (zone-offset-total-seconds (cl-date-kit:parse-zone-offset string))
+        :to-be
+        total-seconds))
+    (it-each
+        (("+") ("+0") ("+090") ("+09:0") ("+09:000") ("+180001") ("UTC"))
+        "normalizes ~S to DATE-TIME-PARSE-ERROR"
+        (string)
+      (signals date-time-parse-error (cl-date-kit:parse-zone-offset string)))))
 
 (describe
   "OffsetTime ISO 8601"
@@ -99,13 +102,15 @@
     (expect
       (local-date= (parse-local-date "2024-03-10") (make-local-date 2024 3 10))
       :to-be-truthy))
+  (it-each
+      (("-0001-01-02" -1 1 2) ("+10000-01-02" 10000 1 2))
+      "round-trips the signed expanded year in ~S"
+      (string year month day)
+    (let ((date (make-local-date year month day)))
+      (expect (format-local-date date) :to-equal string)
+      (expect (local-date= (parse-local-date string) date) :to-be-truthy)))
   (it
-    "round-trips signed expanded ISO 8601 years"
-    (dolist (case '(("-0001-01-02" -1 1 2) ("+10000-01-02" 10000 1 2)))
-      (destructuring-bind (string year month day) case
-        (let ((date (make-local-date year month day)))
-          (expect (format-local-date date) :to-equal string)
-          (expect (local-date= (parse-local-date string) date) :to-be-truthy))))
+    "round-trips a signed expanded year through ordinal and week-date forms"
     (let ((date (make-local-date 10000 6 15)))
       (expect
         (local-date= (parse-local-date-ordinal (format-local-date-ordinal date)) date)
@@ -115,12 +120,13 @@
           (parse-local-date-week-date (format-local-date-week-date date))
           date)
         :to-be-truthy)))
-  (it
-    "parses ISO 8601 basic calendar, ordinal, and week-date forms"
-    (dolist (string '("20240615" "2024-167" "2024167" "2024-W24-6" "2024W246"))
-      (expect
-        (local-date= (parse-local-date string) (make-local-date 2024 6 15))
-        :to-be-truthy)))
+  (it-each
+      (("20240615") ("2024-167") ("2024167") ("2024-W24-6") ("2024W246"))
+      "parses ~S as the ISO 8601 basic, ordinal, or week-date form of 2024-06-15"
+      (string)
+    (expect
+      (local-date= (parse-local-date string) (make-local-date 2024 6 15))
+      :to-be-truthy))
   (it
     "formats and parses canonical ordinal and week-date forms"
     (let ((date (make-local-date 2024 2 29)))
@@ -130,19 +136,22 @@
       (expect
         (local-date= (parse-local-date-week-date "2024-W09-4") date)
         :to-be-truthy)))
-  (it
-    "PARSE-LOCAL-DATE signals DATE-TIME-PARSE-ERROR on malformed input"
-    (dolist (string '("not-a-date" "10000-01-02" "2024-367" "2021-W53-1" "2024-W09-8"))
-      (signals date-time-parse-error (parse-local-date string)))))
+  (it-each
+      (("not-a-date") ("10000-01-02") ("2024-367") ("2021-W53-1") ("2024-W09-8"))
+      "PARSE-LOCAL-DATE signals DATE-TIME-PARSE-ERROR on ~S"
+      (string)
+    (signals date-time-parse-error (parse-local-date string))))
 
 (describe
   "ISO 8601 offset parser boundaries"
-  (it
-    "rejects trailing characters after a complete offset"
-    (dolist (parser
-        (list (function parse-instant) (function cl-date-kit:parse-offset-date-time)))
-      (dolist (input (list "2024-06-15T12:00:00+04:00suffix" "2024-06-15T12:00:00Zsuffix"))
-        (signals date-time-parse-error (funcall parser input)))))
+  (it-each
+      ((parse-instant "2024-06-15T12:00:00+04:00suffix")
+       (parse-instant "2024-06-15T12:00:00Zsuffix")
+       (cl-date-kit:parse-offset-date-time "2024-06-15T12:00:00+04:00suffix")
+       (cl-date-kit:parse-offset-date-time "2024-06-15T12:00:00Zsuffix"))
+      "~A rejects trailing characters in ~S"
+      (parser input)
+    (signals date-time-parse-error (funcall (symbol-function parser) input)))
   (it
     "parses sliced offsets across date-time parser variants"
     (let ((instant (parse-instant "2024-06-15T12:00:00+093015"))
@@ -156,16 +165,14 @@
             (zoned-date-time-offset zoned-date-time)
             (offset-time-offset offset-time)))
         (expect (zone-offset-total-seconds offset) :to-be 34215))))
-  (it
-    "retains parse errors for malformed sliced offsets"
-    (dolist (entry
-        (list
-          (list (function parse-instant) "2024-06-15T12:00:00+09:0")
-          (list (function parse-offset-date-time) "2024-06-15T12:00:00+09:0")
-          (list (function parse-zoned-date-time) "2024-06-15T12:00:00+09:0")
-          (list (function parse-offset-time) "12:00:00+09:0")))
-      (destructuring-bind (parser input) entry
-        (signals date-time-parse-error (funcall parser input))))))
+  (it-each
+      ((parse-instant "2024-06-15T12:00:00+09:0")
+       (cl-date-kit:parse-offset-date-time "2024-06-15T12:00:00+09:0")
+       (parse-zoned-date-time "2024-06-15T12:00:00+09:0")
+       (parse-offset-time "12:00:00+09:0"))
+      "~A retains a parse error for ~S"
+      (parser input)
+    (signals date-time-parse-error (funcall (symbol-function parser) input))))
 
 (describe
   "Duration ISO 8601 day components"
@@ -179,10 +186,11 @@
         (duration-of-seconds (+ (* 2 86400) (* 3 3600) (* 4 60) 5) 6000000))
       :to-be-truthy)
     (expect (duration= (parse-duration "-P1D") (duration-of-days -1)) :to-be-truthy))
-  (it
-    "rejects missing duration components and time separators"
-    (dolist (string '("P" "PT" "P2DT" "P2D3H"))
-      (signals date-time-parse-error (parse-duration string)))))
+  (it-each
+      (("P") ("PT") ("P2DT") ("P2D3H"))
+      "rejects the missing duration component or time separator in ~S"
+      (string)
+    (signals date-time-parse-error (parse-duration string))))
 
 (describe
   "YearMonth"
@@ -192,17 +200,18 @@
       (expect (format-year-month value) :to-equal "2024-06")
       (expect (year-month= (parse-year-month "2024-06") value) :to-be-truthy)
       (expect (year-month= (parse-year-month "202406") value) :to-be-truthy)))
-  (it
-    "round-trips signed expanded ISO 8601 years"
-    (dolist (case '(("-0001-06" -1) ("+10000-06" 10000)))
-      (destructuring-bind (string year) case
-        (let ((value (make-year-month year 6)))
-          (expect (format-year-month value) :to-equal string)
-          (expect (year-month= (parse-year-month string) value) :to-be-truthy)))))
-  (it
-    "normalizes malformed and invalid values to DATE-TIME-PARSE-ERROR"
-    (dolist (string '("2024-6" "10000-06" "2024-13" "2024-00" "2024-06-15" "year-month"))
-      (signals date-time-parse-error (parse-year-month string)))))
+  (it-each
+      (("-0001-06" -1) ("+10000-06" 10000))
+      "round-trips the signed expanded year in ~S"
+      (string year)
+    (let ((value (make-year-month year 6)))
+      (expect (format-year-month value) :to-equal string)
+      (expect (year-month= (parse-year-month string) value) :to-be-truthy)))
+  (it-each
+      (("2024-6") ("10000-06") ("2024-13") ("2024-00") ("2024-06-15") ("year-month"))
+      "normalizes ~S to DATE-TIME-PARSE-ERROR"
+      (string)
+    (signals date-time-parse-error (parse-year-month string))))
 
 (describe
   "MonthDay"
@@ -212,10 +221,11 @@
       (expect (format-month-day value) :to-equal "--06-15")
       (expect (month-day= (parse-month-day "--06-15") value) :to-be-truthy)
       (expect (month-day= (parse-month-day "--0615") value) :to-be-truthy)))
-  (it
-    "normalizes malformed and invalid values to DATE-TIME-PARSE-ERROR"
-    (dolist (string '("06-15" "--6-15" "--02-30" "--13-01" "month-day"))
-      (signals date-time-parse-error (parse-month-day string)))))
+  (it-each
+      (("06-15") ("--6-15") ("--02-30") ("--13-01") ("month-day"))
+      "normalizes ~S to DATE-TIME-PARSE-ERROR"
+      (string)
+    (signals date-time-parse-error (parse-month-day string))))
 
 (describe
   "Year"
@@ -228,10 +238,11 @@
     (expect (year-value (parse-year "-0001")) :to-be -1)
     (expect (format-year (make-year 10000)) :to-equal "+10000")
     (expect (year-value (parse-year "+10000")) :to-be 10000))
-  (it
-    "normalizes malformed values to DATE-TIME-PARSE-ERROR"
-    (dolist (string '("024" "20240" "-001" "year"))
-      (signals date-time-parse-error (parse-year string)))))
+  (it-each
+      (("024") ("20240") ("-001") ("year"))
+      "normalizes ~S to DATE-TIME-PARSE-ERROR"
+      (string)
+    (signals date-time-parse-error (parse-year string))))
 
 (describe
   "LocalTime"
@@ -291,13 +302,15 @@
         (expect
           (instant-epoch-second (parse-instant "2000-02-29T00:00:00Z"))
           :to-be
-          951782400)
-        (dolist (string
-            '("2024-02-30T12:00:00Z"
-              "2024-06-15T24:00:00Z"
-              "2024-06-15T12:60:00Z"
-              "2024-06-15T12:00:60Z"))
-          (signals date-time-parse-error (parse-instant string))))
+          951782400))
+      (it-each
+          (("2024-02-30T12:00:00Z")
+           ("2024-06-15T24:00:00Z")
+           ("2024-06-15T12:60:00Z")
+           ("2024-06-15T12:00:60Z"))
+          "PARSE-INSTANT rejects the invalid canonical UTC value ~S"
+          (string)
+        (signals date-time-parse-error (parse-instant string)))
       (it
         "PARSE-INSTANT rejects malformed canonical-shaped fields"
         (signals date-time-parse-error (parse-instant "2024-0x-15T12:00:00Z")))
@@ -324,16 +337,15 @@
         (parse-instant "2024-06-15T12:00:00-04:00")
         (parse-instant "2024-06-15T16:00:00Z"))
       :to-be-truthy))
-  (it
-    "PARSE-INSTANT signals DATE-TIME-PARSE-ERROR for malformed ISO suffixes"
-    (dolist (string
-        (list
-          "2024-06-15T12:00:00"
-          "2024-06-15T12:00:00+"
-          "2024-06-15T12:00:00+040"
-          "2024-06-15T12:00:00+04:00suffix"
-          "2024-06-15T12:00:00Zsuffix"))
-      (signals date-time-parse-error (parse-instant string)))))
+  (it-each
+      (("2024-06-15T12:00:00")
+       ("2024-06-15T12:00:00+")
+       ("2024-06-15T12:00:00+040")
+       ("2024-06-15T12:00:00+04:00suffix")
+       ("2024-06-15T12:00:00Zsuffix"))
+      "PARSE-INSTANT signals DATE-TIME-PARSE-ERROR for the malformed ISO suffix in ~S"
+      (string)
+    (signals date-time-parse-error (parse-instant string))))
 
 (describe
   "ZonedDateTime"
@@ -357,30 +369,29 @@
         (format-zoned-date-time value)
         :to-equal
         "2024-06-15T12:34:56.123000000+09:30:15")))
-  (it
-    "accepts both valid offsets during a named-zone overlap"
-    (dolist (entry
-        '(("2024-11-03T01:30:00-04:00[America/New_York]" -14400)
-          ("2024-11-03T01:30:00-05:00[America/New_York]" -18000)))
-      (destructuring-bind (string expected-offset) entry
-        (expect
-          (=
-            expected-offset
-            (zone-offset-total-seconds
-              (zoned-date-time-offset (parse-zoned-date-time string))))
-          :to-be-truthy))))
+  (it-each
+      (("2024-11-03T01:30:00-04:00[America/New_York]" -14400)
+       ("2024-11-03T01:30:00-05:00[America/New_York]" -18000))
+      "accepts ~S as a valid offset during a named-zone overlap"
+      (string expected-offset)
+    (expect
+      (=
+        expected-offset
+        (zone-offset-total-seconds
+          (zoned-date-time-offset (parse-zoned-date-time string))))
+      :to-be-truthy))
   (it
     "rejects offsets that are invalid for the named zone"
     (signals
       date-time-parse-error
       (parse-zoned-date-time "2024-01-15T12:00:00-04:00[America/New_York]")))
-  (it
-    "PARSE-ZONED-DATE-TIME signals DATE-TIME-PARSE-ERROR for malformed strings"
-    (dolist (string
-        '("2024-06-15T12:00:00+04:00[America/New_York"
-          "2024-06-15T12:00:00+04:00[]"
-          "2024-06-15T12:00:00+04:00[America/New_York]trailing"))
-      (signals date-time-parse-error (parse-zoned-date-time string)))))
+  (it-each
+      (("2024-06-15T12:00:00+04:00[America/New_York")
+       ("2024-06-15T12:00:00+04:00[]")
+       ("2024-06-15T12:00:00+04:00[America/New_York]trailing"))
+      "PARSE-ZONED-DATE-TIME signals DATE-TIME-PARSE-ERROR for the malformed string ~S"
+      (string)
+    (signals date-time-parse-error (parse-zoned-date-time string))))
 
 (describe
   "Duration"
@@ -392,14 +403,17 @@
   (it
     "a negative duration is prefixed with a leading minus"
     (expect (format-duration (duration-of-seconds -5400)) :to-equal "-PT1H30M"))
-  (it
-    "round-trips through PARSE-DURATION"
-    (dolist (d
-        (list
-          (duration-of-seconds 3661)
-          (duration-zero)
-          (duration-of-seconds -5400)
-          (duration-of-millis 1500)))
+  (it-each
+      ((3661 0) (0 0) (-5400 0) (1 500000000))
+      "round-trips ~A seconds and ~A nanoseconds through PARSE-DURATION"
+      (seconds nanos)
+    (let ((d (duration-of-seconds seconds nanos)))
+      (expect (duration= (parse-duration (format-duration d)) d) :to-be-truthy)))
+  (it-property
+      "PARSE-DURATION inverts FORMAT-DURATION for any duration"
+      ((seconds (gen-integer :min -1000000 :max 1000000))
+       (nanos (gen-integer :min 0 :max 999999999)))
+    (let ((d (duration-of-seconds seconds nanos)))
       (expect (duration= (parse-duration (format-duration d)) d) :to-be-truthy))))
 
 (it
@@ -441,10 +455,11 @@
         (period= (parse-period "P1Y2M3W4D") (make-period :years 1 :months 2 :days 25))
         :to-be-truthy)
       (expect (period= (parse-period "P-2W") (make-period :days -14)) :to-be-truthy))
-    (it
-      "rejects missing, malformed, and unordered components"
-      (dolist (input (list "P" "-P" "P-Y" "P1D2M" "P1W2Y"))
-        (signals date-time-parse-error (parse-period input)))))
+    (it-each
+        (("P") ("-P") ("P-Y") ("P1D2M") ("P1W2Y"))
+        "rejects the missing, malformed, or unordered component in ~S"
+        (input)
+      (signals date-time-parse-error (parse-period input))))
   (describe
     "Interval ISO 8601"
     (it
@@ -456,17 +471,16 @@
             (parse-instant "2024-06-15T14:00:00+09:00")))
         :to-equal
         "2024-06-15T03:00:00Z/2024-06-15T05:00:00Z"))
-    (it
-      "parses all supported representations"
-      (dolist (input
-          (list
-            "2024-06-15T12:00:00Z/2024-06-15T14:00:00Z"
-            "2024-06-15T12:00:00Z/PT2H"
-            "PT2H/2024-06-15T14:00:00Z"))
-        (expect
-          (cl-date-kit:format-interval (cl-date-kit:parse-interval input))
-          :to-equal
-          "2024-06-15T12:00:00Z/2024-06-15T14:00:00Z")))
+    (it-each
+        (("2024-06-15T12:00:00Z/2024-06-15T14:00:00Z")
+         ("2024-06-15T12:00:00Z/PT2H")
+         ("PT2H/2024-06-15T14:00:00Z"))
+        "parses the supported representation ~S"
+        (input)
+      (expect
+        (cl-date-kit:format-interval (cl-date-kit:parse-interval input))
+        :to-equal
+        "2024-06-15T12:00:00Z/2024-06-15T14:00:00Z"))
     (it
       "uses absolute instants when parsing offsets"
       (expect
@@ -481,28 +495,25 @@
           (cl-date-kit:parse-interval "PT0S/2024-06-15T12:00:00Z"))
         :to-equal
         "2024-06-15T12:00:00Z/2024-06-15T12:00:00Z"))
-    (it
-      "rejects unsupported or invalid forms"
-      (dolist (input
-          (list
-            "2024-06-15T12:00:00Z/-PT1S"
-            "2024-06-15T14:00:00Z/2024-06-15T12:00:00Z"
-            "2024-06-15T12:00:00Z/2024-06-15T14:00:00Z/"
-            "/2024-06-15T12:00:00Z"
-            "2024-06-15T12:00:00Z/"
-            "PT1S/PT2S"
-            #()))
-        (signals date-time-parse-error (cl-date-kit:parse-interval input))))))
+    (it-each
+        (("2024-06-15T12:00:00Z/-PT1S")
+         ("2024-06-15T14:00:00Z/2024-06-15T12:00:00Z")
+         ("2024-06-15T12:00:00Z/2024-06-15T14:00:00Z/")
+         ("/2024-06-15T12:00:00Z")
+         ("2024-06-15T12:00:00Z/")
+         ("PT1S/PT2S")
+         (#()))
+        "rejects the unsupported or invalid form ~S"
+        (input)
+      (signals date-time-parse-error (cl-date-kit:parse-interval input)))))
 
 (describe
   "Duration precision"
-  (it
-    "round-trips every nanosecond digit without float conversion"
-    (dolist (duration
-        (list
-          (duration-of-seconds 0 1)
-          (duration-of-seconds 12 123456789)
-          (duration-of-seconds -1 500000000)))
+  (it-each
+      ((0 1) (12 123456789) (-1 500000000))
+      "round-trips ~A seconds and ~A nanoseconds without float conversion"
+      (seconds nanos)
+    (let ((duration (duration-of-seconds seconds nanos)))
       (expect
         (duration= (parse-duration (format-duration duration)) duration)
         :to-be-truthy)))
@@ -521,10 +532,11 @@
   (it
     "rejects non-digits in fixed-width fields"
     (signals date-time-parse-error (parse-local-date "2024- 1-01")))
-  (it
-    "rejects empty and over-precise duration fractions"
-    (dolist (input (list "PT1.S" "PT0.1234567890S"))
-      (signals date-time-parse-error (parse-duration input))))
+  (it-each
+      (("PT1.S") ("PT0.1234567890S"))
+      "rejects the empty or over-precise duration fraction in ~S"
+      (input)
+    (signals date-time-parse-error (parse-duration input)))
   (it
     "requires the fractional duration unit to be last"
     (signals date-time-parse-error (parse-duration "PT1.5H30M")))
@@ -536,26 +548,24 @@
 
 (describe
   "LocalDateInterval ISO 8601"
-  (it
-    "round-trips exact half-open date endpoints"
-    (dolist (input
-        (list
-          "2024-06-15/2024-06-20"
-          "2024-06-15/2024-06-15"
-          "-0001-01-01/+10000-12-31"))
-      (expect
-        (cl-date-kit:format-local-date-interval
-          (cl-date-kit:parse-local-date-interval input))
-        :to-equal
-        input)))
-  (it
-    "rejects malformed and descending endpoints"
-    (dolist (input
-        (list
-          "2024-06-15"
-          "2024-06-15/"
-          "/2024-06-20"
-          "2024-06-15/2024-06-20/2024-06-21"
-          "2024-06-20/2024-06-15"
-          #()))
-      (signals date-time-parse-error (cl-date-kit:parse-local-date-interval input)))))
+  (it-each
+      (("2024-06-15/2024-06-20")
+       ("2024-06-15/2024-06-15")
+       ("-0001-01-01/+10000-12-31"))
+      "round-trips the exact half-open date endpoints in ~S"
+      (input)
+    (expect
+      (cl-date-kit:format-local-date-interval
+        (cl-date-kit:parse-local-date-interval input))
+      :to-equal
+      input))
+  (it-each
+      (("2024-06-15")
+       ("2024-06-15/")
+       ("/2024-06-20")
+       ("2024-06-15/2024-06-20/2024-06-21")
+       ("2024-06-20/2024-06-15")
+       (#()))
+      "rejects the malformed or descending endpoint in ~S"
+      (input)
+    (signals date-time-parse-error (cl-date-kit:parse-local-date-interval input))))

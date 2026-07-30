@@ -162,4 +162,16 @@
       (expect (period-years normalized) :to-be 0)
       (expect (period-months normalized) :to-be -1))))
 
-(describe "period week construction" (it "PERIOD-OF-WEEKS converts integral weeks to days without year or month components" (let ((zero (period-of-weeks 0)) (positive (period-of-weeks 3)) (negative (period-of-weeks -2))) (expect (period= zero (period-of-days 0)) :to-be-truthy) (expect (period= positive (period-of-days 21)) :to-be-truthy) (expect (period= negative (period-of-days -14)) :to-be-truthy) (dolist (period (list zero positive negative)) (expect (= (period-years period) 0) :to-be-truthy) (expect (= (period-months period) 0) :to-be-truthy)))) (it "PERIOD-OF-WEEKS rejects non-integral values" (signals type-error (period-of-weeks 1/2))))
+(describe "period week construction"
+  (it "PERIOD-OF-WEEKS converts integral weeks to days"
+    (expect (period= (period-of-weeks 0) (period-of-days 0)) :to-be-truthy)
+    (expect (period= (period-of-weeks 3) (period-of-days 21)) :to-be-truthy)
+    (expect (period= (period-of-weeks -2) (period-of-days -14)) :to-be-truthy))
+  (it-each
+      ((0) (3) (-2))
+      "PERIOD-OF-WEEKS ~A has no year or month component"
+      (weeks)
+    (let ((period (period-of-weeks weeks)))
+      (expect (= (period-years period) 0) :to-be-truthy)
+      (expect (= (period-months period) 0) :to-be-truthy)))
+  (it "PERIOD-OF-WEEKS rejects non-integral values" (signals type-error (period-of-weeks 1/2))))
