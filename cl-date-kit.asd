@@ -30,6 +30,7 @@
     (:file "zone-offset")
      (:file "posix-tz")
      (:file "zone")
+     (:file "zone-version")
      (:file "zone-local")
      (:file "offset-time")
    (:file "zoned-date-time")
