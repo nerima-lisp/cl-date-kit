@@ -8,7 +8,8 @@
 (progn
   (defparameter +tzdata-version-line-limit+ 128)
   (defun %read-bounded-line (stream)
-    "Reads one metadata line from STREAM without retaining more than the configured limit.\nReturns the line and true when it is complete; returns NIL and NIL when too long."
+    "Reads one metadata line from STREAM without retaining more than the configured limit.
+Returns the line and true when it is complete; returns NIL and NIL when too long."
     (check-type stream stream)
     (let ((output (make-string-output-stream))
           (length 0))

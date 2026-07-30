@@ -181,4 +181,26 @@ when OFFSET-TIME-COMPARE uses its local-time tie breaker."
   (duration-between start end))
 
 (defun offset-time-now (&key (offset (zone-offset-utc)) (clock (current-clock)))
-  (offset-time-of-instant (clock-now clock) offset)) (progn (defun offset-time-truncated-to (offset-time unit) "Returns OFFSET-TIME with its local time truncated down to fixed-width UNIT,\nretaining its offset.\n\nUNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or\n:DAYS. Signals TYPE-ERROR when OFFSET-TIME or UNIT is unsupported." (check-type offset-time offset-time) (make-offset-time (local-time-truncated-to (offset-time-local-time offset-time) unit) (offset-time-offset offset-time))) (defun offset-time-rounded-to (offset-time unit &key (mode :half-even)) "Return OFFSET-TIME with its local time rounded to fixed-width UNIT.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). The offset is retained and a result crossing\nmidnight wraps within the local day." (check-type offset-time offset-time) (make-offset-time (local-time-rounded-to (offset-time-local-time offset-time) unit :mode mode) (offset-time-offset offset-time))))
+  (offset-time-of-instant (clock-now clock) offset))
+
+(progn
+  (defun offset-time-truncated-to (offset-time unit)
+    "Returns OFFSET-TIME with its local time truncated down to fixed-width UNIT,
+retaining its offset.
+
+UNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or
+:DAYS. Signals TYPE-ERROR when OFFSET-TIME or UNIT is unsupported."
+    (check-type offset-time offset-time)
+    (make-offset-time
+      (local-time-truncated-to (offset-time-local-time offset-time) unit)
+      (offset-time-offset offset-time)))
+  (defun offset-time-rounded-to (offset-time unit &key (mode :half-even))
+    "Return OFFSET-TIME with its local time rounded to fixed-width UNIT.
+
+MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,
+or :HALF-EVEN (the default). The offset is retained and a result crossing
+midnight wraps within the local day."
+    (check-type offset-time offset-time)
+    (make-offset-time
+      (local-time-rounded-to (offset-time-local-time offset-time) unit :mode mode)
+      (offset-time-offset offset-time))))

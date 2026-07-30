@@ -221,13 +221,20 @@ wrapping around midnight via %LOCAL-TIME-PLUS-NANOS-TOTAL."
 
 (progn
   (defun local-time-truncated-to (time unit)
-    "Returns TIME truncated down to fixed-width UNIT.\n\nUNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or\n:DAYS. Signals TYPE-ERROR when TIME or UNIT is unsupported."
+    "Returns TIME truncated down to fixed-width UNIT.
+
+UNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or
+:DAYS. Signals TYPE-ERROR when TIME or UNIT is unsupported."
     (check-type time local-time)
     (let ((unit-nanos (%fixed-unit-nanos unit)))
       (local-time-of-nano-of-day
         (* (floor (local-time-to-nano-of-day time) unit-nanos) unit-nanos))))
   (defun local-time-rounded-to (time unit &key (mode :half-even))
-    "Return TIME rounded to fixed-width UNIT, modulo one local day.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). Upward results that cross midnight wrap to the\nstart of the local day."
+    "Return TIME rounded to fixed-width UNIT, modulo one local day.
+
+MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,
+or :HALF-EVEN (the default). Upward results that cross midnight wrap to the
+start of the local day."
     (check-type time local-time)
     (let* ((unit-nanos (%fixed-unit-nanos unit))
            (day-nanos (* +seconds-per-day+ +nanos-per-second+))

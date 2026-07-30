@@ -70,56 +70,73 @@
 (defun %local-date-time-plus-components (date-time seconds nanos)
   "Adds signed second and nanosecond components in one calendar carry pass."
   (let ((time (local-date-time-time date-time)))
-    (multiple-value-bind (second-carry normalized-nanos)
-        (floor (+ (local-time-nanosecond time) nanos) +nanos-per-second+)
-      (multiple-value-bind (day-delta second-of-day)
-          (floor
-           (+ (local-time-to-second-of-day time) seconds second-carry)
-           +seconds-per-day+)
+    (multiple-value-bind (second-carry normalized-nanos) (floor (+ (local-time-nanosecond time) nanos) +nanos-per-second+)
+      (multiple-value-bind (day-delta second-of-day) (floor
+          (+ (local-time-to-second-of-day time) seconds second-carry)
+          +seconds-per-day+)
         (%make-local-date-time
-         (local-date-plus-days (local-date-time-date date-time) day-delta)
-         (local-time-of-second-of-day second-of-day normalized-nanos))))))
+          (local-date-plus-days (local-date-time-date date-time) day-delta)
+          (local-time-of-second-of-day second-of-day normalized-nanos))))))
 
-(defmacro define-local-date-time-fixed-unit-arithmetic
-    (plus-name minus-name seconds-factor nanos-factor)
+(defmacro define-local-date-time-fixed-unit-arithmetic (plus-name minus-name seconds-factor nanos-factor)
   `(progn
-     (defun ,plus-name (date-time amount)
-       (check-type amount integer)
-       (%local-date-time-plus-components
+    (defun ,plus-name (date-time amount)
+      (check-type amount integer)
+      (%local-date-time-plus-components
         date-time
         (* amount ,seconds-factor)
         (* amount ,nanos-factor)))
-     (defun ,minus-name (date-time amount)
-       (check-type amount integer)
-       (%local-date-time-plus-components
+    (defun ,minus-name (date-time amount)
+      (check-type amount integer)
+      (%local-date-time-plus-components
         date-time
         (* (- amount) ,seconds-factor)
         (* (- amount) ,nanos-factor)))))
 
 (define-local-date-time-fixed-unit-arithmetic
-    local-date-time-plus-nanos local-date-time-minus-nanos 0 1)
+  local-date-time-plus-nanos
+  local-date-time-minus-nanos
+  0
+  1)
+
 (define-local-date-time-fixed-unit-arithmetic
-    local-date-time-plus-micros local-date-time-minus-micros 0 1000)
+  local-date-time-plus-micros
+  local-date-time-minus-micros
+  0
+  1000)
+
 (define-local-date-time-fixed-unit-arithmetic
-    local-date-time-plus-millis local-date-time-minus-millis 0 1000000)
+  local-date-time-plus-millis
+  local-date-time-minus-millis
+  0
+  1000000)
+
 (define-local-date-time-fixed-unit-arithmetic
-    local-date-time-plus-seconds local-date-time-minus-seconds 1 0)
+  local-date-time-plus-seconds
+  local-date-time-minus-seconds
+  1
+  0)
+
 (define-local-date-time-fixed-unit-arithmetic
-    local-date-time-plus-minutes local-date-time-minus-minutes 60 0)
+  local-date-time-plus-minutes
+  local-date-time-minus-minutes
+  60
+  0)
+
 (define-local-date-time-fixed-unit-arithmetic
-    local-date-time-plus-hours local-date-time-minus-hours 3600 0)
+  local-date-time-plus-hours
+  local-date-time-minus-hours
+  3600
+  0)
 
 (defun local-date-time-plus-duration (dt d)
-  (%local-date-time-plus-components
-   dt
-   (duration-seconds d)
-   (duration-nanos d)))
+  (%local-date-time-plus-components dt (duration-seconds d) (duration-nanos d)))
 
 (defun local-date-time-minus-duration (dt d)
   (%local-date-time-plus-components
-   dt
-   (- (duration-seconds d))
-   (- (duration-nanos d))))
+    dt
+    (- (duration-seconds d))
+    (- (duration-nanos d))))
 
 (defun local-date-time-plus-period (dt p)
   (%make-local-date-time
@@ -133,16 +150,19 @@
 
 (defmethod duration-between ((start local-date-time) (end local-date-time))
   (flet ((timeline-nanos (date-time)
-           (+ (* (local-date-to-epoch-day (local-date-time-date date-time))
-                 +seconds-per-day+
-                 +nanos-per-second+)
-              (local-time-to-nano-of-day (local-date-time-time date-time)))))
-    (duration-of-nanos
-     (- (timeline-nanos end) (timeline-nanos start)))))
+           (+
+          (*
+            (local-date-to-epoch-day (local-date-time-date date-time))
+            +seconds-per-day+
+            +nanos-per-second+)
+          (local-time-to-nano-of-day (local-date-time-time date-time)))))
+    (duration-of-nanos (- (timeline-nanos end) (timeline-nanos start)))))
 
 (defun local-date-time-until (start end)
   "Returns the signed nanosecond-precision DURATION from START to END on the local timeline."
-  (duration-between start end))(defun local-date-time-compare (a b)
+  (duration-between start end))
+
+(defun local-date-time-compare (a b)
   (let ((date-cmp
         (local-date-compare (local-date-time-date a) (local-date-time-date b))))
     (if (zerop date-cmp) (local-time-compare (local-date-time-time a) (local-date-time-time b))
@@ -209,4 +229,26 @@
   "Returns DATE-TIME with NANOSECOND, preserving its local date."
   (%make-local-date-time
     (local-date-time-date date-time)
-    (local-time-with-nanosecond (local-date-time-time date-time) nanosecond))) (progn (defun local-date-time-truncated-to (date-time unit) "Returns DATE-TIME with its local time truncated down to fixed-width UNIT.\n\nUNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or\n:DAYS. Signals TYPE-ERROR when DATE-TIME or UNIT is unsupported." (check-type date-time local-date-time) (%make-local-date-time (local-date-time-date date-time) (local-time-truncated-to (local-date-time-time date-time) unit))) (defun local-date-time-rounded-to (date-time unit &key (mode :half-even)) "Return DATE-TIME with its local time rounded to fixed-width UNIT.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). Rounding that crosses midnight carries into the\nadjacent local date." (check-type date-time local-date-time) (let* ((time-nanos (local-time-to-nano-of-day (local-date-time-time date-time))) (rounded-nanos (%round-fixed-unit-nanos time-nanos (%fixed-unit-nanos unit) mode))) (%local-date-time-plus-components date-time 0 (- rounded-nanos time-nanos)))))
+    (local-time-with-nanosecond (local-date-time-time date-time) nanosecond)))
+
+(progn
+  (defun local-date-time-truncated-to (date-time unit)
+    "Returns DATE-TIME with its local time truncated down to fixed-width UNIT.
+
+UNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or
+:DAYS. Signals TYPE-ERROR when DATE-TIME or UNIT is unsupported."
+    (check-type date-time local-date-time)
+    (%make-local-date-time
+      (local-date-time-date date-time)
+      (local-time-truncated-to (local-date-time-time date-time) unit)))
+  (defun local-date-time-rounded-to (date-time unit &key (mode :half-even))
+    "Return DATE-TIME with its local time rounded to fixed-width UNIT.
+
+MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,
+or :HALF-EVEN (the default). Rounding that crosses midnight carries into the
+adjacent local date."
+    (check-type date-time local-date-time)
+    (let* ((time-nanos (local-time-to-nano-of-day (local-date-time-time date-time)))
+           (rounded-nanos
+          (%round-fixed-unit-nanos time-nanos (%fixed-unit-nanos unit) mode)))
+      (%local-date-time-plus-components date-time 0 (- rounded-nanos time-nanos)))))

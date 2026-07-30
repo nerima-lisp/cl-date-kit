@@ -427,13 +427,18 @@ name the same instant compare equal."
 
 (progn
   (defun zoned-date-time-truncated-to (zoned-date-time unit)
-    "Returns ZONED-DATE-TIME with its local time truncated down to UNIT.\nWhen the result is ambiguous, retains the original offset when it is valid."
+    "Returns ZONED-DATE-TIME with its local time truncated down to UNIT.
+When the result is ambiguous, retains the original offset when it is valid."
     (check-type zoned-date-time zoned-date-time)
     (%zoned-date-time-with-local
       zoned-date-time
       (local-date-time-truncated-to (zoned-date-time-local zoned-date-time) unit)))
   (defun zoned-date-time-rounded-to (zoned-date-time unit &key (mode :half-even))
-    "Return ZONED-DATE-TIME with its local time rounded to fixed-width UNIT.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). The rounded local time is resolved in the zone;\nwhen ambiguous, the original offset is retained when it remains valid."
+    "Return ZONED-DATE-TIME with its local time rounded to fixed-width UNIT.
+
+MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,
+or :HALF-EVEN (the default). The rounded local time is resolved in the zone;
+when ambiguous, the original offset is retained when it remains valid."
     (check-type zoned-date-time zoned-date-time)
     (%zoned-date-time-with-local
       zoned-date-time

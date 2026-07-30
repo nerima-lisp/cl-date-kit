@@ -22,7 +22,10 @@
 (progn
   (defconstant +unix-epoch-universal-time+ 2208988800)
   (defun instant-to-universal-time (instant)
-    "Return the Common Lisp universal-time for a whole-second INSTANT.\n\nSignals INSTANT-PRECISION-LOSS when INSTANT has nonzero nanoseconds because\nuniversal time cannot represent subsecond precision."
+    "Return the Common Lisp universal-time for a whole-second INSTANT.
+
+Signals INSTANT-PRECISION-LOSS when INSTANT has nonzero nanoseconds because
+universal time cannot represent subsecond precision."
     (check-type instant instant)
     (unless (zerop (instant-nanosecond instant))
       (error

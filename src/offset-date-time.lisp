@@ -40,26 +40,34 @@
 (defun offset-date-time-of-instant (instant offset)
   (make-offset-date-time (local-date-time-of-instant instant offset) offset))
 
-(defun offset-date-time-to-instant (offset-date-time) (local-date-time-to-instant (offset-date-time-local-date-time offset-date-time) (offset-date-time-offset offset-date-time)))
-
+(defun offset-date-time-to-instant (offset-date-time)
+  (local-date-time-to-instant
+    (offset-date-time-local-date-time offset-date-time)
+    (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-at-zone-same-instant (offset-date-time zone)
   "Re-expresses the OFFSET-DATE-TIME instant under ZONE rules."
-  (zoned-date-time-of-instant
-    (offset-date-time-to-instant offset-date-time)
-    zone))
-
+  (zoned-date-time-of-instant (offset-date-time-to-instant offset-date-time) zone))
 
 (defun offset-date-time-at-zone-similar-local (offset-date-time zone)
   "Resolves OFFSET-DATE-TIME local fields in ZONE, preferring its offset."
   (zoned-date-time-of-local
     (offset-date-time-local-date-time offset-date-time)
     zone
-    :preferred-offset (offset-date-time-offset offset-date-time)))
+    :preferred-offset
+    (offset-date-time-offset offset-date-time)))
 
-(defun offset-date-time-of-epoch-second (epoch-second nanosecond offset) "Construct an OFFSET-DATE-TIME by applying fixed OFFSET to Unix epoch fields." (make-offset-date-time (local-date-time-of-epoch-second epoch-second nanosecond offset) offset))
+(defun offset-date-time-of-epoch-second (epoch-second nanosecond offset)
+  "Construct an OFFSET-DATE-TIME by applying fixed OFFSET to Unix epoch fields."
+  (make-offset-date-time
+    (local-date-time-of-epoch-second epoch-second nanosecond offset)
+    offset))
 
-(defun offset-date-time-to-epoch-second (offset-date-time) "Return the Unix epoch-second represented by OFFSET-DATE-TIME." (local-date-time-to-epoch-second (offset-date-time-local-date-time offset-date-time) (offset-date-time-offset offset-date-time)))
+(defun offset-date-time-to-epoch-second (offset-date-time)
+  "Return the Unix epoch-second represented by OFFSET-DATE-TIME."
+  (local-date-time-to-epoch-second
+    (offset-date-time-local-date-time offset-date-time)
+    (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-date (offset-date-time)
   (local-date-time-date (offset-date-time-local-date-time offset-date-time)))
@@ -91,19 +99,25 @@
 (defun offset-date-time-with-year (offset-date-time year)
   "Returns OFFSET-DATE-TIME with YEAR, retaining its fixed offset."
   (make-offset-date-time
-    (local-date-time-with-year (offset-date-time-local-date-time offset-date-time) year)
+    (local-date-time-with-year
+      (offset-date-time-local-date-time offset-date-time)
+      year)
     (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-with-month (offset-date-time month)
   "Returns OFFSET-DATE-TIME with MONTH, retaining its fixed offset."
   (make-offset-date-time
-    (local-date-time-with-month (offset-date-time-local-date-time offset-date-time) month)
+    (local-date-time-with-month
+      (offset-date-time-local-date-time offset-date-time)
+      month)
     (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-with-day (offset-date-time day)
   "Returns OFFSET-DATE-TIME with DAY, retaining its fixed offset."
   (make-offset-date-time
-    (local-date-time-with-day (offset-date-time-local-date-time offset-date-time) day)
+    (local-date-time-with-day
+      (offset-date-time-local-date-time offset-date-time)
+      day)
     (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-with-day-of-year (offset-date-time day-of-year)
@@ -117,19 +131,25 @@
 (defun offset-date-time-with-hour (offset-date-time hour)
   "Returns OFFSET-DATE-TIME with HOUR, retaining its fixed offset."
   (make-offset-date-time
-    (local-date-time-with-hour (offset-date-time-local-date-time offset-date-time) hour)
+    (local-date-time-with-hour
+      (offset-date-time-local-date-time offset-date-time)
+      hour)
     (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-with-minute (offset-date-time minute)
   "Returns OFFSET-DATE-TIME with MINUTE, retaining its fixed offset."
   (make-offset-date-time
-    (local-date-time-with-minute (offset-date-time-local-date-time offset-date-time) minute)
+    (local-date-time-with-minute
+      (offset-date-time-local-date-time offset-date-time)
+      minute)
     (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-with-second (offset-date-time second)
   "Returns OFFSET-DATE-TIME with SECOND, retaining its fixed offset."
   (make-offset-date-time
-    (local-date-time-with-second (offset-date-time-local-date-time offset-date-time) second)
+    (local-date-time-with-second
+      (offset-date-time-local-date-time offset-date-time)
+      second)
     (offset-date-time-offset offset-date-time)))
 
 (defun offset-date-time-with-nanosecond (offset-date-time nanosecond)
@@ -237,49 +257,39 @@
       period)
     (offset-date-time-offset offset-date-time)))
 
-
-
 (progn
   (defun offset-date-time-plus-days (offset-date-time days)
     "Return OFFSET-DATE-TIME with DAYS added on its local calendar."
     (check-type days integer)
     (offset-date-time-plus-period offset-date-time (period-of-days days)))
-
   (defun offset-date-time-minus-days (offset-date-time days)
     "Return OFFSET-DATE-TIME with DAYS subtracted on its local calendar."
     (check-type days integer)
     (offset-date-time-plus-days offset-date-time (- days)))
-
   (defun offset-date-time-plus-weeks (offset-date-time weeks)
     "Return OFFSET-DATE-TIME with WEEKS added on its local calendar."
     (check-type weeks integer)
     (offset-date-time-plus-days offset-date-time (* weeks 7)))
-
   (defun offset-date-time-minus-weeks (offset-date-time weeks)
     "Return OFFSET-DATE-TIME with WEEKS subtracted on its local calendar."
     (check-type weeks integer)
     (offset-date-time-plus-weeks offset-date-time (- weeks)))
-
   (defun offset-date-time-plus-months (offset-date-time months)
     "Return OFFSET-DATE-TIME with MONTHS added on its local calendar."
     (check-type months integer)
     (offset-date-time-plus-period offset-date-time (period-of-months months)))
-
   (defun offset-date-time-minus-months (offset-date-time months)
     "Return OFFSET-DATE-TIME with MONTHS subtracted on its local calendar."
     (check-type months integer)
     (offset-date-time-plus-months offset-date-time (- months)))
-
   (defun offset-date-time-plus-years (offset-date-time years)
     "Return OFFSET-DATE-TIME with YEARS added on its local calendar."
     (check-type years integer)
     (offset-date-time-plus-period offset-date-time (period-of-years years)))
-
   (defun offset-date-time-minus-years (offset-date-time years)
     "Return OFFSET-DATE-TIME with YEARS subtracted on its local calendar."
     (check-type years integer)
     (offset-date-time-plus-years offset-date-time (- years)))
-
   (defmethod duration-between ((start offset-date-time) (end offset-date-time))
     (duration-between
       (offset-date-time-to-instant start)
@@ -311,4 +321,32 @@
   (not (minusp (offset-date-time-compare a b))))
 
 (defun offset-date-time-now (&key (offset (zone-offset-utc)) (clock (current-clock)))
-  (offset-date-time-of-instant (clock-now clock) offset)) (progn (defun offset-date-time-truncated-to (offset-date-time unit) "Returns OFFSET-DATE-TIME with local time truncated down to fixed-width UNIT,\nretaining its offset.\n\nUNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or\n:DAYS. Signals TYPE-ERROR when OFFSET-DATE-TIME or UNIT is unsupported." (check-type offset-date-time offset-date-time) (make-offset-date-time (local-date-time-truncated-to (offset-date-time-local-date-time offset-date-time) unit) (offset-date-time-offset offset-date-time))) (defun offset-date-time-rounded-to (offset-date-time unit &key (mode :half-even)) "Return OFFSET-DATE-TIME with its local time rounded to fixed-width UNIT.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). The offset is retained, and rounding across\nmidnight carries into the adjacent local date." (check-type offset-date-time offset-date-time) (make-offset-date-time (local-date-time-rounded-to (offset-date-time-local-date-time offset-date-time) unit :mode mode) (offset-date-time-offset offset-date-time))))
+  (offset-date-time-of-instant (clock-now clock) offset))
+
+(progn
+  (defun offset-date-time-truncated-to (offset-date-time unit)
+    "Returns OFFSET-DATE-TIME with local time truncated down to fixed-width UNIT,
+retaining its offset.
+
+UNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or
+:DAYS. Signals TYPE-ERROR when OFFSET-DATE-TIME or UNIT is unsupported."
+    (check-type offset-date-time offset-date-time)
+    (make-offset-date-time
+      (local-date-time-truncated-to
+        (offset-date-time-local-date-time offset-date-time)
+        unit)
+      (offset-date-time-offset offset-date-time)))
+  (defun offset-date-time-rounded-to (offset-date-time unit &key (mode :half-even))
+    "Return OFFSET-DATE-TIME with its local time rounded to fixed-width UNIT.
+
+MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,
+or :HALF-EVEN (the default). The offset is retained, and rounding across
+midnight carries into the adjacent local date."
+    (check-type offset-date-time offset-date-time)
+    (make-offset-date-time
+      (local-date-time-rounded-to
+        (offset-date-time-local-date-time offset-date-time)
+        unit
+        :mode
+        mode)
+      (offset-date-time-offset offset-date-time))))
