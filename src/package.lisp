@@ -82,6 +82,7 @@
    #:period-of-years
    #:period-of-months
    #:period-of-days
+   #:period-of-weeks
    #:period-of
    #:period-with-years
    #:period-with-months
@@ -111,10 +112,12 @@
    #:local-date-month
    #:local-date-day
    #:make-local-date
+   #:local-date-of
    #:local-date-of-year-day
    #:local-date-of-week-date
    #:local-date-at-time
    #:local-date-at-start-of-day
+   #:local-date-at-start-of-day-in-zone
    #:local-date-of-instant
    #:leap-year-p
    #:length-of-month
@@ -123,6 +126,11 @@
    #:local-date-length-of-year
    #:day-of-week
    #:day-of-year
+   #:day-of-week-value
+   #:day-of-week-from-value
+   #:day-of-week-length
+   #:day-of-week-plus
+   #:day-of-week-minus
    #:local-date-week-based-year
    #:local-date-week-of-week-based-year
    #:local-date-plus-days
@@ -156,6 +164,25 @@
    #:local-date-next
    #:local-date-previous-or-same
    #:local-date-previous
+   #:local-date-first-day-of-next-month
+   #:local-date-first-day-of-next-year
+   #:local-date-first-in-month
+   #:local-date-last-in-month
+   #:local-date-day-of-week-in-month
+
+   ;; Month (ISO-8601 month-of-year keyword, e.g. :JANUARY, independent of any particular year)
+   #:month-value
+   #:month-from-value
+   #:month-length
+   #:month-min-length
+   #:month-max-length
+   #:month-first-day-of-year
+   #:month-quarter-of-year
+   #:month-first-month-of-quarter
+   #:month-plus
+   #:month-minus
+   #:month-from-local-date
+   #:month-now
 
    ;; YearMonth (proleptic Gregorian year and month, no day or zone)
    #:year-month
@@ -241,11 +268,12 @@
    #:local-time-second
    #:local-time-nanosecond
    #:make-local-time
+   #:local-time-of
    #:local-time-of-second-of-day
    #:local-time-of-nano-of-day
    #:local-time-midnight
    #:local-time-noon
-   #:local-time-at-date #:local-time-of-instant #:local-time-now
+   #:local-time-at-date #:local-time-at-offset #:local-time-of-instant #:local-time-now
    #:local-time-plus-hours
    #:local-time-plus-minutes
    #:local-time-plus-seconds
@@ -337,12 +365,16 @@
    #:instant-nanosecond
    #:make-instant
    #:instant-epoch
+   #:instant-to-universal-time
    #:instant-of-epoch-nanos
+   #:instant-of-epoch-second
    #:instant-of-epoch-millis
    #:instant-of-epoch-micros
    #:instant-to-epoch-nanos
    #:instant-to-epoch-millis
    #:instant-to-epoch-micros
+   #:instant-at-zone
+   #:instant-at-offset
    #:instant-plus-nanos #:instant-plus-micros #:instant-plus-millis
    #:instant-plus-seconds #:instant-plus-minutes #:instant-plus-hours
    #:instant-plus-days #:instant-plus-duration
@@ -357,8 +389,53 @@
    #:instant>
    #:instant>=
 
+   ;; Interval (half-open span of Instants; LocalDateInterval spans two LocalDates instead)
+   #:interval
+   #:interval-p
+   #:interval-start
+   #:interval-end
+   #:make-interval
+   #:interval-empty-p
+   #:interval-duration
+   #:interval-contains-p
+   #:interval-encloses-p
+   #:interval-overlaps-p
+   #:interval-abuts-p
+   #:interval-connected-p
+   #:interval-before-p
+   #:interval-after-p
+   #:interval-intersection
+   #:interval-span
+   #:interval-union
+   #:interval-with-start
+   #:interval-with-end
+   #:interval-difference
+   #:interval-gap
+   #:make-local-date-interval
+   #:local-date-interval-start
+   #:local-date-interval-end
+   #:local-date-interval-empty-p
+   #:map-local-date-interval
+   #:do-local-date-interval
+   #:local-date-interval-contains-p
+   #:local-date-interval-encloses-p
+   #:local-date-interval-overlaps-p
+   #:local-date-interval-abuts-p
+   #:local-date-interval-connected-p
+   #:local-date-interval-before-p
+   #:local-date-interval-after-p
+   #:local-date-interval-intersection
+   #:local-date-interval-union
+   #:local-date-interval-with-start
+   #:local-date-interval-with-end
+   #:local-date-interval-difference
+   #:local-date-interval-gap
+   #:local-date-interval-length-in-days
+
    ;; Clock (a boundary protocol for where "now" comes from)
    #:clock-now
+   #:current-clock
+   #:call-with-clock
    #:make-system-clock
    #:system-clock-p
    #:make-fixed-clock
@@ -394,7 +471,15 @@
    #:time-zone-p
    #:time-zone-name
    #:find-time-zone
+   #:available-time-zone-names
+   #:time-zone-database-version
    #:offset-for-instant
+   #:zone-state
+   #:zone-state-p
+   #:zone-state-offset
+   #:zone-state-abbreviation
+   #:zone-state-daylight-saving-p
+   #:zone-state-for-instant
    #:zone-transition
    #:zone-transition-p
    #:zone-transition-instant
@@ -405,8 +490,15 @@
    #:zone-transition-duration
    #:zone-transition-date-time-before
    #:zone-transition-date-time-after
+   #:time-zone-transition
+   #:time-zone-transition-instant
+   #:time-zone-transition-offset-before
+   #:time-zone-transition-offset-after
+   #:time-zone-transition-duration
    #:next-zone-transition
+   #:time-zone-transitions-between
    #:previous-zone-transition
+   #:local-date-time-zone-transition
    #:possible-offsets-for-local-date-time
    #:resolve-local-date-time
 
@@ -417,8 +509,16 @@
    #:zoned-date-time-zone
    #:zoned-date-time-offset
    #:zoned-date-time-of-local
+   #:zoned-date-time-of-strict
+   #:local-date-time-at-zone
    #:zoned-date-time-of-instant
    #:zoned-date-time-to-instant
+   #:zoned-date-time-to-offset-date-time
+   #:zoned-date-time-with-fixed-offset-zone
+   #:zoned-date-time-with-earlier-offset-at-overlap
+   #:zoned-date-time-with-later-offset-at-overlap
+   #:zoned-date-time-of-epoch-second
+   #:zoned-date-time-to-epoch-second
    #:zoned-date-time-date
    #:zoned-date-time-time
    #:zoned-date-time-year
@@ -463,15 +563,63 @@
    #:local-date-time-now
    #:zoned-date-time-now
 
+   ;; RRULE (RFC 5545 recurrence rules: rule definitions, DATE/DATE-TIME
+   ;; occurrence expansion, RDATE/EXDATE recurrence sets, and the wire-format codec)
+   #:rrule-by-day-p
+   #:rrule-by-day-weekday
+   #:rrule-by-day-ordinal
+   #:make-rrule-by-day
+   #:rrule
+   #:rrule-p
+   #:rrule-frequency
+   #:rrule-interval
+   #:rrule-count
+   #:rrule-until
+   #:rrule-week-start
+   #:rrule-by-second
+   #:rrule-by-minute
+   #:rrule-by-hour
+   #:rrule-by-day
+   #:rrule-by-month-day
+   #:rrule-by-year-day
+   #:rrule-by-week-no
+   #:rrule-by-month
+   #:rrule-by-set-pos
+   #:make-rrule
+   #:rrule-schedule
+   #:rrule-schedule-p
+   #:rrule-schedule-dtstart
+   #:rrule-schedule-rrule
+   #:make-rrule-schedule
+   #:map-rrule-occurrences
+   #:rrule-occurrences
+   #:do-rrule-occurrences
+   #:rrule-set
+   #:rrule-set-p
+   #:rrule-set-schedules
+   #:rrule-set-rdates
+   #:rrule-set-exdates
+   #:make-rrule-set
+   #:rrule-set-occurrences
+   #:map-rrule-set-occurrences
+   #:do-rrule-set-occurrences
+   #:parse-rrule
+   #:format-rrule
+
    ;; OffsetDateTime (LocalDateTime + fixed ZoneOffset)
    #:offset-date-time
    #:offset-date-time-p
    #:offset-date-time-local-date-time
    #:offset-date-time-offset
    #:make-offset-date-time
+   #:local-date-time-at-offset
    #:offset-date-time-of
    #:offset-date-time-of-instant
    #:offset-date-time-to-instant
+   #:offset-date-time-at-zone-same-instant
+   #:offset-date-time-at-zone-similar-local
+   #:offset-date-time-of-epoch-second
+   #:offset-date-time-to-epoch-second
    #:offset-date-time-date
    #:offset-date-time-time
    #:offset-date-time-year
@@ -571,7 +719,22 @@
    #:parse-duration
    #:format-period
    #:parse-period
+   #:format-interval
    #:parse-interval
+
+   ;; Locale (bundled month/weekday names used by pattern-based formatting;
+   ;; English and Japanese are included)
+   #:date-time-locale
+   #:date-time-locale-name
+   #:date-time-locale-short-months
+   #:date-time-locale-long-months
+   #:date-time-locale-narrow-months
+   #:date-time-locale-short-weekdays
+   #:date-time-locale-long-weekdays
+   #:date-time-locale-narrow-weekdays
+   #:date-time-locale-meridiems
+   #:make-date-time-locale
+   #:find-date-time-locale
 
    ;; Pattern formatting (compiled, locale-independent field patterns)
    #:date-time-formatter
@@ -587,6 +750,10 @@
    #:invalid-date-year
    #:invalid-date-month
    #:invalid-date-day
+   #:invalid-day-of-week
+   #:invalid-day-of-week-value
+   #:invalid-month
+   #:invalid-month-value
    #:invalid-year-month
    #:invalid-year-month-year
    #:invalid-year-month-month
@@ -619,122 +786,17 @@
    #:ambiguous-local-time-zone
    #:ambiguous-local-time-earlier-offset
    #:ambiguous-local-time-later-offset
+   #:invalid-zoned-date-time-offset
    #:invalid-zone-offset
    #:invalid-zone-offset-hours
    #:invalid-zone-offset-minutes
-   #:invalid-zone-offset-seconds #:interval #:interval-p #:interval-start #:interval-end #:make-interval #:interval-empty-p #:interval-duration #:interval-contains-p #:interval-encloses-p #:interval-overlaps-p #:interval-abuts-p #:interval-connected-p #:interval-before-p #:interval-after-p #:interval-intersection #:interval-span #:interval-union #:interval-gap #:interval-with-start #:interval-with-end #:interval-difference #:invalid-interval #:invalid-interval-start #:invalid-interval-end #:local-date-time-at-zone #:local-date-time-at-offset #:offset-date-time-of-epoch-second #:offset-date-time-to-epoch-second #:zoned-date-time-of-epoch-second #:zoned-date-time-to-epoch-second #:instant-of-epoch-second #:local-date-of #:local-time-of #:invalid-day-of-week #:invalid-day-of-week-value #:day-of-week-value #:day-of-week-from-value #:day-of-week-length #:day-of-week-plus #:day-of-week-minus #:invalid-month #:invalid-month-value #:month-value #:month-from-value #:month-length #:month-min-length #:month-max-length #:month-first-day-of-year #:month-quarter-of-year #:month-first-month-of-quarter #:month-plus #:month-minus #:month-from-local-date #:local-date-at-start-of-day-in-zone #:offset-date-time-at-zone-similar-local
-#:available-time-zone-names
-#:call-with-clock
-#:clock-now
-#:current-clock
-#:date-time-locale
-#:date-time-locale-long-months
-#:date-time-locale-long-weekdays
-#:date-time-locale-meridiems
-#:date-time-locale-name
-#:date-time-locale-narrow-months
-#:date-time-locale-narrow-weekdays
-#:date-time-locale-short-months
-#:date-time-locale-short-weekdays
-#:do-local-date-interval
-#:do-rrule-occurrences
-#:do-rrule-set-occurrences
-#:find-date-time-locale
-#:format-interval
-#:parse-rrule
-#:format-rrule
-#:instant-at-offset
-#:instant-at-zone
-#:instant-to-universal-time
-#:invalid-rrule
-#:invalid-rrule-reason
-#:invalid-rrule-value
-#:invalid-zoned-date-time-offset
-#:local-date-day-of-week-in-month
-#:local-date-first-day-of-next-month
-#:local-date-first-day-of-next-year
-#:local-date-first-in-month
-#:local-date-interval-abuts-p
-#:local-date-interval-after-p
-#:local-date-interval-before-p
-#:local-date-interval-connected-p
-#:local-date-interval-contains-p
-#:local-date-interval-difference
-#:local-date-interval-empty-p
-#:local-date-interval-encloses-p
-#:local-date-interval-end
-#:local-date-interval-gap
-#:local-date-interval-intersection
-#:local-date-interval-length-in-days
-#:local-date-interval-overlaps-p
-#:local-date-interval-start
-#:local-date-interval-union
-#:local-date-interval-with-end
-#:local-date-interval-with-start
-#:local-date-last-in-month
-#:local-date-time-zone-transition
-#:local-time-at-offset
-#:make-date-time-locale
-#:make-local-date-interval
-#:make-rrule
-#:make-rrule-by-day
-#:make-rrule-schedule
-#:make-rrule-set
-#:map-local-date-interval
-#:map-rrule-occurrences
-#:map-rrule-set-occurrences
-#:month-now
-#:offset-date-time-at-zone-same-instant
-#:period-of-weeks
-#:rrule
-#:rrule-by-day
-#:rrule-by-day-ordinal
-#:rrule-by-day-weekday
-#:rrule-by-day-p
-#:rrule-by-hour
-#:rrule-by-minute
-#:rrule-by-month
-#:rrule-by-month-day
-#:rrule-by-second
-#:rrule-by-set-pos
-#:rrule-by-week-no
-#:rrule-by-year-day
-#:rrule-count
-#:rrule-frequency
-#:rrule-interval
-#:rrule-occurrences
-#:rrule-p
-#:rrule-schedule
-#:rrule-schedule-dtstart
-#:rrule-schedule-p
-#:rrule-schedule-rrule
-#:rrule-set
-#:rrule-set-exdates
-#:rrule-set-occurrences
-#:rrule-set-p
-#:rrule-set-rdates
-#:rrule-set-schedules
-#:rrule-until
-#:rrule-week-start
-#:time-zone-database-version
-#:time-zone-transition
-#:time-zone-transition-instant
-#:time-zone-transition-offset-after
-#:time-zone-transition-offset-before
-#:time-zone-transition-duration
-#:zone-transition-p
-#:time-zone-transitions-between
-#:zone-state
-#:zone-state-abbreviation
-#:zone-state-daylight-saving-p
-#:zone-state-for-instant
-#:zone-state-offset
-#:zone-state-p
-#:zoned-date-time-of-strict
-#:zoned-date-time-to-offset-date-time
-#:zoned-date-time-with-earlier-offset-at-overlap
-#:zoned-date-time-with-fixed-offset-zone
-#:zoned-date-time-with-later-offset-at-overlap
+   #:invalid-zone-offset-seconds
+   #:invalid-interval
+   #:invalid-interval-start
+   #:invalid-interval-end
+   #:invalid-rrule
+   #:invalid-rrule-reason
+   #:invalid-rrule-value
 ))
 
 (in-package #:cl-date-kit)
