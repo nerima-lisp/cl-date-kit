@@ -24,13 +24,19 @@
       (<= 0 nanosecond 999999999))
     (error
       (quote invalid-time)
-      :hour hour
-      :minute minute
-      :second second
-      :nanosecond nanosecond))
+      :hour
+      hour
+      :minute
+      minute
+      :second
+      second
+      :nanosecond
+      nanosecond))
   (%make-local-time hour minute second nanosecond))
 
-(defun local-time-of (hour minute second &optional (nanosecond 0)) "Construct a LOCAL-TIME from wall-clock fields." (make-local-time hour minute second nanosecond))
+(defun local-time-of (hour minute second &optional (nanosecond 0))
+  "Construct a LOCAL-TIME from wall-clock fields."
+  (make-local-time hour minute second nanosecond))
 
 (defun local-time-midnight ()
   (%make-local-time 0 0 0 0))
@@ -99,41 +105,50 @@ arithmetic never carries into a date, matching java.time)."
     (multiple-value-bind (second-of-day nanosecond) (floor wrapped +nanos-per-second+)
       (local-time-of-second-of-day second-of-day nanosecond))))
 
-(defun local-time-plus-nanos (time n)
-  (%local-time-plus-nanos-total time n))
+(defmacro define-local-time-fixed-unit-arithmetic (plus-name minus-name amount nanos-factor)
+  "Define PLUS-NAME/MINUS-NAME as TIME +/- AMOUNT units of NANOS-FACTOR nanoseconds each,
+wrapping around midnight via %LOCAL-TIME-PLUS-NANOS-TOTAL."
+  `(progn
+    (defun ,plus-name (time ,amount)
+      (%local-time-plus-nanos-total time (* ,amount ,nanos-factor)))
+    (defun ,minus-name (time ,amount)
+      (%local-time-plus-nanos-total time (- (* ,amount ,nanos-factor))))))
 
-(defun local-time-plus-millis (time n)
-  (%local-time-plus-nanos-total time (* n 1000000)))
+(define-local-time-fixed-unit-arithmetic
+  local-time-plus-nanos
+  local-time-minus-nanos
+  n
+  1)
 
-(defun local-time-plus-micros (time n)
-  (%local-time-plus-nanos-total time (* n 1000)))
+(define-local-time-fixed-unit-arithmetic
+  local-time-plus-micros
+  local-time-minus-micros
+  n
+  1000)
 
-(defun local-time-minus-nanos (time n)
-  (%local-time-plus-nanos-total time (- n)))
+(define-local-time-fixed-unit-arithmetic
+  local-time-plus-millis
+  local-time-minus-millis
+  n
+  1000000)
 
-(defun local-time-minus-millis (time n)
-  (local-time-plus-millis time (- n)))
+(define-local-time-fixed-unit-arithmetic
+  local-time-plus-seconds
+  local-time-minus-seconds
+  n
+  +nanos-per-second+)
 
-(defun local-time-minus-micros (time n)
-  (local-time-plus-micros time (- n)))
+(define-local-time-fixed-unit-arithmetic
+  local-time-plus-minutes
+  local-time-minus-minutes
+  n
+  (* 60 +nanos-per-second+))
 
-(defun local-time-plus-seconds (time n)
-  (%local-time-plus-nanos-total time (* n +nanos-per-second+)))
-
-(defun local-time-minus-seconds (time n)
-  (local-time-plus-seconds time (- n)))
-
-(defun local-time-plus-minutes (time n)
-  (local-time-plus-seconds time (* n 60)))
-
-(defun local-time-minus-minutes (time n)
-  (local-time-plus-seconds time (* n -60)))
-
-(defun local-time-plus-hours (time n)
-  (local-time-plus-seconds time (* n 3600)))
-
-(defun local-time-minus-hours (time n)
-  (local-time-plus-seconds time (* n -3600)))
+(define-local-time-fixed-unit-arithmetic
+  local-time-plus-hours
+  local-time-minus-hours
+  n
+  (* 3600 +nanos-per-second+))
 
 (defmethod duration-between ((start local-time) (end local-time))
   (duration-of-nanos
@@ -202,4 +217,20 @@ arithmetic never carries into a date, matching java.time)."
     (local-time-hour time)
     (local-time-minute time)
     (local-time-second time)
-    nanosecond)) (progn (defun local-time-truncated-to (time unit) "Returns TIME truncated down to fixed-width UNIT.\n\nUNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or\n:DAYS. Signals TYPE-ERROR when TIME or UNIT is unsupported." (check-type time local-time) (let ((unit-nanos (%fixed-unit-nanos unit))) (local-time-of-nano-of-day (* (floor (local-time-to-nano-of-day time) unit-nanos) unit-nanos)))) (defun local-time-rounded-to (time unit &key (mode :half-even)) "Return TIME rounded to fixed-width UNIT, modulo one local day.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). Upward results that cross midnight wrap to the\nstart of the local day." (check-type time local-time) (let* ((unit-nanos (%fixed-unit-nanos unit)) (day-nanos (* +seconds-per-day+ +nanos-per-second+)) (rounded-nanos (%round-fixed-unit-nanos (local-time-to-nano-of-day time) unit-nanos mode))) (local-time-of-nano-of-day (mod rounded-nanos day-nanos)))))
+    nanosecond))
+
+(progn
+  (defun local-time-truncated-to (time unit)
+    "Returns TIME truncated down to fixed-width UNIT.\n\nUNIT is one of :NANOS, :MICROS, :MILLIS, :SECONDS, :MINUTES, :HOURS, or\n:DAYS. Signals TYPE-ERROR when TIME or UNIT is unsupported."
+    (check-type time local-time)
+    (let ((unit-nanos (%fixed-unit-nanos unit)))
+      (local-time-of-nano-of-day
+        (* (floor (local-time-to-nano-of-day time) unit-nanos) unit-nanos))))
+  (defun local-time-rounded-to (time unit &key (mode :half-even))
+    "Return TIME rounded to fixed-width UNIT, modulo one local day.\n\nMODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO, :HALF-UP,\nor :HALF-EVEN (the default). Upward results that cross midnight wrap to the\nstart of the local day."
+    (check-type time local-time)
+    (let* ((unit-nanos (%fixed-unit-nanos unit))
+           (day-nanos (* +seconds-per-day+ +nanos-per-second+))
+           (rounded-nanos
+          (%round-fixed-unit-nanos (local-time-to-nano-of-day time) unit-nanos mode)))
+      (local-time-of-nano-of-day (mod rounded-nanos day-nanos)))))
