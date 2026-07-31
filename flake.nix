@@ -37,10 +37,16 @@
       ...
     }:
     let
-      # The CI matrix verifies each advertised platform.
+      # Only what CI verifies. aarch64-darwin was dropped on 2026-08-01
+      # together with the macos-15 half of ci.yml's runner matrix: the flake
+      # never advertises a platform no runner builds.
+      #
+      # Consequence, accepted deliberately: every per-system output --
+      # packages, checks, apps and devShells alike -- comes from this one list,
+      # so `nix develop` and `nix build` no longer work on macOS. Development
+      # happens on Linux. See PACKAGE_STANDARD.md, section "systems".
       systems = [
         "x86_64-linux"
-        "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
@@ -93,12 +99,20 @@
           toPath = x: /. + builtins.unsafeDiscardStringContext "${x}";
           cl-weave-src = cl.mkLispSource { root = toPath cl-weave; };
           cl-date-kit-src = cl.mkLispSource { root = toPath self; };
+
+          # Read from cl-weave's own .asd, exactly as `version` above is read
+          # from ours. Spelling "1.1.0" here as a literal made the input pin
+          # and the derivation's version two places to edit, and the flake had
+          # no way to notice when they disagreed. Bound out here rather than
+          # inside the `rec` below, where `cl-weave` names the derivation being
+          # defined rather than the flake input.
+          cl-weave-version = cl.fromAsdSystem "${cl-weave}/cl-weave.asd";
         in
         rec {
           cl-weave = cl.lispDerivation {
             lispSystem = "cl-weave";
             src = cl-weave-src;
-            version = "1.1.0";
+            version = cl-weave-version;
           };
 
           cl-date-kit = cl.lispDerivation {

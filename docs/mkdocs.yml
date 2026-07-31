@@ -40,7 +40,9 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
-  - pymdownx.snippets
+  # pymdownx.snippets is deliberately absent: its only use here was pulling the
+  # root CHANGELOG.md into docs/src/changelog.md, and neither file exists any
+  # more (2026-08-01 -- the GitHub Release description is the only changelog).
 
 nav:
   - Home: index.md
@@ -56,5 +58,4 @@ nav:
   - Internals:
       - Architecture: architecture.md
   - Project:
-      - Changelog: changelog.md
       - Development: development.md

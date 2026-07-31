@@ -1,4 +1,12 @@
 ;;;; cl-date-kit.asd
+
+;;; This form comes FIRST, before any defsystem. ASDF binds *package* to
+;;; ASDF-USER only for a file it loads itself; read any other way -- a REPL
+;;; `load`, an editor evaluating the buffer, flake.nix parsing :version -- the
+;;; file is read in whatever package happens to be current. Saying it makes
+;;; the file self-contained.
+(in-package #:asdf-user)
+
 (asdf:defsystem "cl-date-kit"
   :description "Dependency-free, SBCL-only date/time library with IANA time zone support, inspired by java.time, chrono, and Temporal"
   :long-description "cl-date-kit builds modern calendar and clock values with IANA time zone support and ISO 8601 parsing."
