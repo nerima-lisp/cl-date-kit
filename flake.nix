@@ -157,7 +157,7 @@
           clDateKit = self.packages.${system}.cl-date-kit;
 
           # The time-zone tests read real IANA data through TZDIR rather
-          # than a bundled copy (see docs/src/compatibility.md), so the Nix
+          # than a bundled copy (see docs/src/reference/compatibility.md), so the Nix
           # sandbox needs its own zoneinfo tree: nixpkgs' `tzdata` package,
           # not whatever the host happens to have at /usr/share/zoneinfo
           # (which is not visible inside the sandbox anyway).

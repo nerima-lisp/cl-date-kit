@@ -45,7 +45,7 @@ An overlapping local time resolves the other way: pass `:preferred-offset` to
 keep a previously chosen offset (`(zone-offset-of-hours -5)` picks the later,
 EST reading of a 01:30 that occurs twice). Recurrence rules build on the same
 distinction — see
-[RFC 5545 recurrence](https://nerima-lisp.github.io/cl-date-kit/core-concepts/)
+[RFC 5545 recurrence](https://nerima-lisp.github.io/cl-date-kit/guide/core-concepts/)
 for `PARSE-RRULE`, `MAKE-RRULE-SCHEDULE`, `MAKE-RRULE-SET`, and the streaming
 `MAP-RRULE-SET-OCCURRENCES` k-way merge that enumerates `N` occurrences from
 `K` sources in `O(N log K)` time and `O(K)` space.
@@ -64,14 +64,14 @@ Note the pinned tag. Consumers inside this org must pin a release tag rather
 than follow the default branch.
 
 For ASDF installation and runtime requirements, see the
-[installation guide](docs/src/installation.md).
+[getting started guide](docs/src/getting-started.md).
 
 ## Documentation
 
-- [Quick start](https://nerima-lisp.github.io/cl-date-kit/quick-start/)
-- [API reference](https://nerima-lisp.github.io/cl-date-kit/api-reference/)
-- [Architecture](https://nerima-lisp.github.io/cl-date-kit/architecture/)
-- [Compatibility](https://nerima-lisp.github.io/cl-date-kit/compatibility/)
+- [Getting started](https://nerima-lisp.github.io/cl-date-kit/getting-started/)
+- [API reference](https://nerima-lisp.github.io/cl-date-kit/reference/api/)
+- [Architecture](https://nerima-lisp.github.io/cl-date-kit/reference/architecture/)
+- [Compatibility](https://nerima-lisp.github.io/cl-date-kit/reference/compatibility/)
 
 ## Development
 

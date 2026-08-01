@@ -46,16 +46,13 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Getting Started:
-      - Installation: installation.md
-      - Quick start: quick-start.md
+  - Getting Started: getting-started.md
   - Guide:
-      - Core concepts: core-concepts.md
-      - Conditions: conditions.md
+      - Core concepts: guide/core-concepts.md
   - Reference:
-      - API: api-reference.md
-      - Compatibility: compatibility.md
-  - Internals:
-      - Architecture: architecture.md
+      - API: reference/api.md
+      - Architecture: reference/architecture.md
+      - Conditions: reference/conditions.md
+      - Compatibility: reference/compatibility.md
   - Project:
-      - Development: development.md
+      - Development: project/development.md

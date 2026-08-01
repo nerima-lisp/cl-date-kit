@@ -54,6 +54,6 @@ is built only on the ones below it:
    parsing for every type above, including calendar, ordinal, and ISO week
    dates.
 
-See [Core concepts](core-concepts.md) for how they fit together and
-[Architecture](architecture.md) for the implementation decisions behind the
+See [Core concepts](guide/core-concepts.md) for how they fit together and
+[Architecture](reference/architecture.md) for the implementation decisions behind the
 TZif parser and daylight-saving disambiguation.

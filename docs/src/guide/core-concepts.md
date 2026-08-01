@@ -14,7 +14,7 @@ not become a real moment in history until you pair it with a `ZONE-OFFSET`
 or `TIME-ZONE`. Doing that pairing is `RESOLVE-LOCAL-DATE-TIME` /
 `ZONED-DATE-TIME-OF-LOCAL`, and it is the one place naive date-time
 arithmetic most commonly goes wrong in other libraries -- see
-[Conditions](conditions.md) for why it can come back with zero, one, or two
+[Conditions](../reference/conditions.md) for why it can come back with zero, one, or two
 answers.
 
 ## Exact time vs. calendar time
