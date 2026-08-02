@@ -9,7 +9,7 @@
     # cl-weave is a test-only dependency (see cl-date-kit.asd), so only its
     # source tree is needed here, not its flake outputs.
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.1.0";
+      url = "github:nerima-lisp/cl-weave/v1.1.4";
       flake = false;
     };
 
