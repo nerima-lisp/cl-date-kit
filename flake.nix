@@ -37,16 +37,17 @@
       ...
     }:
     let
-      # Only what CI verifies. aarch64-darwin was dropped on 2026-08-01
-      # together with the macos-15 half of ci.yml's runner matrix: the flake
-      # never advertises a platform no runner builds.
-      #
-      # Consequence, accepted deliberately: every per-system output --
-      # packages, checks, apps and devShells alike -- comes from this one list,
-      # so `nix develop` and `nix build` no longer work on macOS. Development
-      # happens on Linux. See PACKAGE_STANDARD.md, section "systems".
+      # x86_64-linux is what CI gates; aarch64-darwin is the development
+      # machine. Every per-system output -- packages, checks, apps AND devShells
+      # -- comes from this one list, so leaving aarch64-darwin out takes `nix
+      # build` and `nix develop` off the development machine as well. That trade
+      # was made on 2026-08-01 and reverted on 2026-08-02; aarch64-darwin carries
+      # no CI gate, which PACKAGE_STANDARD.md's "systems" section accepts
+      # explicitly. aarch64-linux and x86_64-darwin are nobody's verification and
+      # are not declared.
       systems = [
         "x86_64-linux"
+        "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
