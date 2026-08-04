@@ -17,7 +17,7 @@
     # up run-tests.lisp-based checks/apps, and extracts .asd metadata, so
     # this flake no longer hand-rolls any of that itself.
     cl-nix-forge = {
-      url = "github:nerima-lisp/cl-nix-forge/v0.4.0";
+      url = "github:nerima-lisp/cl-nix-forge/v0.5.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
