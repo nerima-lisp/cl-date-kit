@@ -78,56 +78,53 @@
           (local-date-plus-days (local-date-time-date date-time) day-delta)
           (local-time-of-second-of-day second-of-day normalized-nanos))))))
 
-(defmacro define-local-date-time-fixed-unit-arithmetic (plus-name minus-name seconds-factor nanos-factor)
-  `(progn
-    (defun ,plus-name (date-time amount)
-      (check-type amount integer)
-      (%local-date-time-plus-components
-        date-time
-        (* amount ,seconds-factor)
-        (* amount ,nanos-factor)))
-    (defun ,minus-name (date-time amount)
-      (check-type amount integer)
-      (%local-date-time-plus-components
-        date-time
-        (* (- amount) ,seconds-factor)
-        (* (- amount) ,nanos-factor)))))
-
-(define-local-date-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-date-time-plus-nanos
   local-date-time-minus-nanos
+  amount
   0
-  1)
+  1
+  %local-date-time-plus-components)
 
-(define-local-date-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-date-time-plus-micros
   local-date-time-minus-micros
+  amount
   0
-  1000)
+  1000
+  %local-date-time-plus-components)
 
-(define-local-date-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-date-time-plus-millis
   local-date-time-minus-millis
+  amount
   0
-  1000000)
+  1000000
+  %local-date-time-plus-components)
 
-(define-local-date-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-date-time-plus-seconds
   local-date-time-minus-seconds
+  amount
   1
-  0)
+  0
+  %local-date-time-plus-components)
 
-(define-local-date-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-date-time-plus-minutes
   local-date-time-minus-minutes
+  amount
   60
-  0)
+  0
+  %local-date-time-plus-components)
 
-(define-local-date-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-date-time-plus-hours
   local-date-time-minus-hours
+  amount
   3600
-  0)
+  0
+  %local-date-time-plus-components)
 
 (defun local-date-time-plus-duration (dt d)
   (%local-date-time-plus-components dt (duration-seconds d) (duration-nanos d)))
@@ -168,20 +165,7 @@
     (if (zerop date-cmp) (local-time-compare (local-date-time-time a) (local-date-time-time b))
       date-cmp)))
 
-(defun local-date-time= (a b)
-  (zerop (local-date-time-compare a b)))
-
-(defun local-date-time< (a b)
-  (minusp (local-date-time-compare a b)))
-
-(defun local-date-time<= (a b)
-  (not (plusp (local-date-time-compare a b))))
-
-(defun local-date-time> (a b)
-  (plusp (local-date-time-compare a b)))
-
-(defun local-date-time>= (a b)
-  (not (minusp (local-date-time-compare a b))))
+(define-ordering-operators local-date-time local-date-time-compare)
 
 (defun local-date-time-with-year (date-time year)
   "Returns DATE-TIME with YEAR, preserving its local time."

@@ -100,11 +100,7 @@
                   (year-month-to-proleptic-month b))))
     (cond ((minusp delta) -1) ((plusp delta) 1) (t 0))))
 
-(defun year-month= (a b) (zerop (year-month-compare a b)))
-(defun year-month< (a b) (minusp (year-month-compare a b)))
-(defun year-month<= (a b) (not (plusp (year-month-compare a b))))
-(defun year-month> (a b) (plusp (year-month-compare a b)))
-(defun year-month>= (a b) (not (minusp (year-month-compare a b))))
+(define-ordering-operators year-month year-month-compare)
 
 (defun year-month-with-year (value year)
   "Returns VALUE with YEAR replaced."

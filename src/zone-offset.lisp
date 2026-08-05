@@ -58,17 +58,5 @@
       ((plusp delta) 1)
       (t 0))))
 
-(defun zone-offset= (a b)
-  (zerop (zone-offset-compare a b)))
+(define-ordering-operators zone-offset zone-offset-compare)
 
-(defun zone-offset< (a b)
-  (minusp (zone-offset-compare a b)))
-
-(defun zone-offset<= (a b)
-  (not (plusp (zone-offset-compare a b))))
-
-(defun zone-offset> (a b)
-  (plusp (zone-offset-compare a b)))
-
-(defun zone-offset>= (a b)
-  (not (minusp (zone-offset-compare a b))))

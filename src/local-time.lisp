@@ -105,50 +105,56 @@ arithmetic never carries into a date, matching java.time)."
     (multiple-value-bind (second-of-day nanosecond) (floor wrapped +nanos-per-second+)
       (local-time-of-second-of-day second-of-day nanosecond))))
 
-(defmacro define-local-time-fixed-unit-arithmetic (plus-name minus-name amount nanos-factor)
-  "Define PLUS-NAME/MINUS-NAME as TIME +/- AMOUNT units of NANOS-FACTOR nanoseconds each,
-wrapping around midnight via %LOCAL-TIME-PLUS-NANOS-TOTAL."
-  `(progn
-    (defun ,plus-name (time ,amount)
-      (%local-time-plus-nanos-total time (* ,amount ,nanos-factor)))
-    (defun ,minus-name (time ,amount)
-      (%local-time-plus-nanos-total time (- (* ,amount ,nanos-factor))))))
+(defun %local-time-plus-components (time seconds nanos)
+  (%local-time-plus-nanos-total time (+ (* seconds +nanos-per-second+) nanos)))
 
-(define-local-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-time-plus-nanos
   local-time-minus-nanos
   n
-  1)
+  0
+  1
+  %local-time-plus-components)
 
-(define-local-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-time-plus-micros
   local-time-minus-micros
   n
-  1000)
+  0
+  1000
+  %local-time-plus-components)
 
-(define-local-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-time-plus-millis
   local-time-minus-millis
   n
-  1000000)
+  0
+  1000000
+  %local-time-plus-components)
 
-(define-local-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-time-plus-seconds
   local-time-minus-seconds
   n
-  +nanos-per-second+)
+  1
+  0
+  %local-time-plus-components)
 
-(define-local-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-time-plus-minutes
   local-time-minus-minutes
   n
-  (* 60 +nanos-per-second+))
+  60
+  0
+  %local-time-plus-components)
 
-(define-local-time-fixed-unit-arithmetic
+(define-fixed-unit-arithmetic
   local-time-plus-hours
   local-time-minus-hours
   n
-  (* 3600 +nanos-per-second+))
+  3600
+  0
+  %local-time-plus-components)
 
 (defmethod duration-between ((start local-time) (end local-time))
   (duration-of-nanos
@@ -172,20 +178,7 @@ wrapping around midnight via %LOCAL-TIME-PLUS-NANOS-TOTAL."
       ((plusp delta) 1)
       (t 0))))
 
-(defun local-time= (a b)
-  (zerop (local-time-compare a b)))
-
-(defun local-time< (a b)
-  (minusp (local-time-compare a b)))
-
-(defun local-time<= (a b)
-  (not (plusp (local-time-compare a b))))
-
-(defun local-time> (a b)
-  (plusp (local-time-compare a b)))
-
-(defun local-time>= (a b)
-  (not (minusp (local-time-compare a b))))
+(define-ordering-operators local-time local-time-compare)
 
 (defun local-time-with-hour (time hour)
   "Returns TIME with HOUR."

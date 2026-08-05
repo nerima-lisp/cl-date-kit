@@ -96,20 +96,6 @@
 (defun period-minus (a b)
   (%period-combine-components a b #'-))
 
-(defmacro define-period-fixed-component-arithmetic (plus-name
-    minus-name
-    amount
-    component-constructor
-    plus-documentation
-    minus-documentation)
-  `(progn
-    (defun ,plus-name (period ,amount)
-      ,plus-documentation
-      (period-plus period (,component-constructor ,amount)))
-    (defun ,minus-name (period ,amount)
-      ,minus-documentation
-      (period-minus period (,component-constructor ,amount)))))
-
 (define-period-fixed-component-arithmetic
   period-plus-years
   period-minus-years

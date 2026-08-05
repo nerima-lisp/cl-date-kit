@@ -781,6 +781,9 @@
    #:ambiguous-local-time-earlier-offset
    #:ambiguous-local-time-later-offset
    #:invalid-zoned-date-time-offset
+   #:invalid-zoned-date-time-offset-local-date-time
+   #:invalid-zoned-date-time-offset-offset
+   #:invalid-zoned-date-time-offset-zone
    #:invalid-zone-offset
    #:invalid-zone-offset-hours
    #:invalid-zone-offset-minutes
@@ -788,6 +791,12 @@
    #:invalid-interval
    #:invalid-interval-start
    #:invalid-interval-end
+   #:invalid-duration-division
+   #:invalid-duration-division-duration
+   #:invalid-duration-division-divisor
+   #:instant-precision-loss
+   #:instant-precision-loss-instant
+   #:instant-precision-loss-representation
    #:invalid-rrule
    #:invalid-rrule-reason
    #:invalid-rrule-value
