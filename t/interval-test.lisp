@@ -114,25 +114,22 @@
           (c (cl-date-kit:make-interval (make-instant 5) (make-instant 15))))
       (expect (cl-date-kit:interval-gap a b) :to-be-falsy)
       (expect (cl-date-kit:interval-gap a c) :to-be-falsy)))
-  (it
-    "unions overlapping and abutting ranges"
-    (dolist
-      (pair
-        (list
-          (list
-            (cl-date-kit:make-interval (make-instant 0) (make-instant 15))
-            (cl-date-kit:make-interval (make-instant 5) (make-instant 20)))
-          (list
-            (cl-date-kit:make-interval (make-instant 10) (make-instant 20))
-            (cl-date-kit:make-interval (make-instant 0) (make-instant 10)))))
-      (let ((union (cl-date-kit:interval-union (first pair) (second pair))))
-        (expect union :to-be-truthy)
-        (expect
-          (instant= (cl-date-kit:interval-start union) (make-instant 0))
-          :to-be-truthy)
-        (expect
-          (instant= (cl-date-kit:interval-end union) (make-instant 20))
-          :to-be-truthy))))
+  (it-each
+      (("overlapping" 0 15 5 20)
+       ("abutting" 10 20 0 10))
+      "unions ~A ranges"
+      (kind a-start a-end b-start b-end)
+    (declare (ignore kind))
+    (let* ((a (cl-date-kit:make-interval (make-instant a-start) (make-instant a-end)))
+           (b (cl-date-kit:make-interval (make-instant b-start) (make-instant b-end)))
+           (union (cl-date-kit:interval-union a b)))
+      (expect union :to-be-truthy)
+      (expect
+        (instant= (cl-date-kit:interval-start union) (make-instant 0))
+        :to-be-truthy)
+      (expect
+        (instant= (cl-date-kit:interval-end union) (make-instant 20))
+        :to-be-truthy)))
   (it
     "does not bridge a positive gap and retains empty intervals at every boundary"
     (let ((a (cl-date-kit:make-interval (make-instant 0) (make-instant 10)))
@@ -185,17 +182,19 @@
       (expect
         (mapcar (lambda (part) (cl-date-kit:instant-epoch-second (cl-date-kit:interval-end part))) parts)
         :to-equal (list 3 10))))
-  (it
-    "keeps a non-empty source interval for disjoint, empty, or abutting removal"
-    (let ((interval (cl-date-kit:make-interval (make-instant 0) (make-instant 10))))
-      (dolist (removed (list
-                         (cl-date-kit:make-interval (make-instant 10) (make-instant 20))
-                         (cl-date-kit:make-interval (make-instant 3) (make-instant 3))
-                         (cl-date-kit:make-interval (make-instant 20) (make-instant 30))))
-        (let ((parts (cl-date-kit:interval-difference interval removed)))
-          (expect (length parts) :to-equal 1)
-          (expect (instant= (cl-date-kit:interval-start (first parts)) (make-instant 0)) :to-be-truthy)
-          (expect (instant= (cl-date-kit:interval-end (first parts)) (make-instant 10)) :to-be-truthy)))))
+  (it-each
+      (("abutting after" 10 20)
+       ("empty" 3 3)
+       ("disjoint" 20 30))
+      "keeps a non-empty source interval when removal is ~A"
+      (kind removed-start removed-end)
+    (declare (ignore kind))
+    (let* ((interval (cl-date-kit:make-interval (make-instant 0) (make-instant 10)))
+           (removed (cl-date-kit:make-interval (make-instant removed-start) (make-instant removed-end)))
+           (parts (cl-date-kit:interval-difference interval removed)))
+      (expect (length parts) :to-equal 1)
+      (expect (instant= (cl-date-kit:interval-start (first parts)) (make-instant 0)) :to-be-truthy)
+      (expect (instant= (cl-date-kit:interval-end (first parts)) (make-instant 10)) :to-be-truthy)))
   (it
     "returns no empty intervals after complete or boundary-aligned removal"
     (let ((interval (cl-date-kit:make-interval (make-instant 0) (make-instant 10))))
@@ -280,6 +279,46 @@
                          (cl-date-kit:local-date-interval-end part)))
                       difference)
               :to-equal (list 3))))))
+  (it
+    "intersects to the later start and earlier end regardless of argument order"
+    (flet ((date (day) (cl-date-kit:make-local-date 2024 1 day)))
+      (let* ((a (cl-date-kit:make-local-date-interval (date 3) (date 9)))
+             (b (cl-date-kit:make-local-date-interval (date 1) (date 5)))
+             (intersection (cl-date-kit:local-date-interval-intersection a b)))
+        (expect (cl-date-kit:local-date-day (cl-date-kit:local-date-interval-start intersection)) :to-equal 3)
+        (expect (cl-date-kit:local-date-day (cl-date-kit:local-date-interval-end intersection)) :to-equal 5))))
+  (it
+    "produces only the trailing remainder when removal covers the interval's start"
+    (flet ((date (day) (cl-date-kit:make-local-date 2024 1 day)))
+      (let* ((interval (cl-date-kit:make-local-date-interval (date 1) (date 10)))
+             (removed (cl-date-kit:make-local-date-interval (date 1) (date 5)))
+             (parts (cl-date-kit:local-date-interval-difference interval removed)))
+        (expect (length parts) :to-equal 1)
+        (expect (cl-date-kit:local-date-day (cl-date-kit:local-date-interval-start (first parts))) :to-equal 5)
+        (expect (cl-date-kit:local-date-day (cl-date-kit:local-date-interval-end (first parts))) :to-equal 10))))
+  (it-each
+      (("abutting after" 5 9)
+       ("an empty interval inside" 3 3)
+       ("disjoint" 9 12))
+      "keeps a non-empty local-date interval intact when removal is ~A"
+      (kind removed-start removed-end)
+    (declare (ignore kind))
+    (flet ((date (day) (cl-date-kit:make-local-date 2024 1 day)))
+      (let* ((interval (cl-date-kit:make-local-date-interval (date 1) (date 5)))
+             (removed (cl-date-kit:make-local-date-interval (date removed-start) (date removed-end)))
+             (parts (cl-date-kit:local-date-interval-difference interval removed)))
+        (expect (length parts) :to-equal 1)
+        (expect (cl-date-kit:local-date-day (cl-date-kit:local-date-interval-start (first parts))) :to-equal 1)
+        (expect (cl-date-kit:local-date-day (cl-date-kit:local-date-interval-end (first parts))) :to-equal 5))))
+  (it
+    "returns no intervals when removal fully covers an already-empty interval"
+    (flet ((date (day) (cl-date-kit:make-local-date 2024 1 day)))
+      (let ((interval (cl-date-kit:make-local-date-interval (date 3) (date 3))))
+        (expect
+          (cl-date-kit:local-date-interval-difference
+            interval
+            (cl-date-kit:make-local-date-interval (date 1) (date 5)))
+          :to-equal (list)))))
   (it
     "classifies enclosure and relations at boundaries, including empty intervals"
     (flet ((date (day) (cl-date-kit:make-local-date 2024 1 day)))
