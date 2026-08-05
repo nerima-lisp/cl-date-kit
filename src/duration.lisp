@@ -16,6 +16,9 @@
   (multiple-value-bind (extra-seconds normalized-nanos) (floor nanos +nanos-per-second+)
     (%make-duration (+ seconds extra-seconds) normalized-nanos)))
 
+(defun %duration-plus-components (duration seconds nanos)
+  (%normalize-duration (+ (duration-seconds duration) seconds) (+ (duration-nanos duration) nanos)))
+
 (defun duration-of-seconds (seconds &optional (nanos 0))
   "Build a duration from exact integral seconds and nanoseconds."
   (check-type seconds integer)
@@ -78,56 +81,40 @@ For daylight-saving-aware calendar days, use PERIOD-OF-DAYS."
   (check-type nanos (integer 0 999999999))
   (%make-duration (duration-seconds d) nanos))
 
-(defmacro define-duration-fixed-unit-arithmetic
-    (plus-name minus-name amount seconds-factor nanos-factor plus-documentation minus-documentation)
-  `(progn
-     (defun ,plus-name (duration ,amount)
-       ,plus-documentation
-       (check-type ,amount integer)
-       (%normalize-duration
-        (+ (duration-seconds duration) (* ,amount ,seconds-factor))
-        (+ (duration-nanos duration) (* ,amount ,nanos-factor))))
-     (defun ,minus-name (duration ,amount)
-       ,minus-documentation
-       (check-type ,amount integer)
-       (%normalize-duration
-        (- (duration-seconds duration) (* ,amount ,seconds-factor))
-        (- (duration-nanos duration) (* ,amount ,nanos-factor))))))
+(define-fixed-unit-arithmetic
+  duration-plus-nanos duration-minus-nanos nanos 0 1 %duration-plus-components
+  :plus-documentation "Return D advanced by integral NANOSECONDS."
+  :minus-documentation "Return D reduced by integral NANOSECONDS.")
 
-(define-duration-fixed-unit-arithmetic
-  duration-plus-nanos duration-minus-nanos nanos 0 1
-  "Return D advanced by integral NANOSECONDS."
-  "Return D reduced by integral NANOSECONDS.")
+(define-fixed-unit-arithmetic
+  duration-plus-micros duration-minus-micros micros 0 1000 %duration-plus-components
+  :plus-documentation "Return D advanced by integral MICROSECONDS."
+  :minus-documentation "Return D reduced by integral MICROSECONDS.")
 
-(define-duration-fixed-unit-arithmetic
-  duration-plus-micros duration-minus-micros micros 0 1000
-  "Return D advanced by integral MICROSECONDS."
-  "Return D reduced by integral MICROSECONDS.")
+(define-fixed-unit-arithmetic
+  duration-plus-millis duration-minus-millis millis 0 1000000 %duration-plus-components
+  :plus-documentation "Return D advanced by integral MILLISECONDS."
+  :minus-documentation "Return D reduced by integral MILLISECONDS.")
 
-(define-duration-fixed-unit-arithmetic
-  duration-plus-millis duration-minus-millis millis 0 1000000
-  "Return D advanced by integral MILLISECONDS."
-  "Return D reduced by integral MILLISECONDS.")
+(define-fixed-unit-arithmetic
+  duration-plus-seconds duration-minus-seconds seconds 1 0 %duration-plus-components
+  :plus-documentation "Return D advanced by integral SECONDS."
+  :minus-documentation "Return D reduced by integral SECONDS.")
 
-(define-duration-fixed-unit-arithmetic
-  duration-plus-seconds duration-minus-seconds seconds 1 0
-  "Return D advanced by integral SECONDS."
-  "Return D reduced by integral SECONDS.")
+(define-fixed-unit-arithmetic
+  duration-plus-minutes duration-minus-minutes minutes 60 0 %duration-plus-components
+  :plus-documentation "Return D advanced by integral MINUTES."
+  :minus-documentation "Return D reduced by integral MINUTES.")
 
-(define-duration-fixed-unit-arithmetic
-  duration-plus-minutes duration-minus-minutes minutes 60 0
-  "Return D advanced by integral MINUTES."
-  "Return D reduced by integral MINUTES.")
+(define-fixed-unit-arithmetic
+  duration-plus-hours duration-minus-hours hours 3600 0 %duration-plus-components
+  :plus-documentation "Return D advanced by integral fixed-width HOURS."
+  :minus-documentation "Return D reduced by integral fixed-width HOURS.")
 
-(define-duration-fixed-unit-arithmetic
-  duration-plus-hours duration-minus-hours hours 3600 0
-  "Return D advanced by integral fixed-width HOURS."
-  "Return D reduced by integral fixed-width HOURS.")
-
-(define-duration-fixed-unit-arithmetic
-  duration-plus-days duration-minus-days days 86400 0
-  "Return D advanced by integral fixed 24-hour DAYS."
-  "Return D reduced by integral fixed 24-hour DAYS.")
+(define-fixed-unit-arithmetic
+  duration-plus-days duration-minus-days days 86400 0 %duration-plus-components
+  :plus-documentation "Return D advanced by integral fixed 24-hour DAYS."
+  :minus-documentation "Return D reduced by integral fixed 24-hour DAYS.")
 
 (defun duration-negate (d)
   (%normalize-duration (- (duration-seconds d)) (- (duration-nanos d))))
@@ -277,20 +264,7 @@ MODE is one of :FLOOR, :CEILING, :TOWARD-ZERO, :AWAY-FROM-ZERO,
     ((> (duration-nanos a) (duration-nanos b)) 1)
     (t 0)))
 
-(defun duration= (a b)
-  (zerop (duration-compare a b)))
-
-(defun duration< (a b)
-  (minusp (duration-compare a b)))
-
-(defun duration<= (a b)
-  (not (plusp (duration-compare a b))))
-
-(defun duration> (a b)
-  (plusp (duration-compare a b)))
-
-(defun duration>= (a b)
-  (not (minusp (duration-compare a b))))
+(define-ordering-operators duration duration-compare)
 
 (defgeneric duration-between (start end)
   (:documentation

@@ -13,67 +13,84 @@
 
 (defun %pattern-next-literal (parts)
   (find-if #'stringp parts))
+(defun %pattern-invalid-for-expected (string expected)
+  "Builds the niladic failure continuation used by the %PATTERN-READ-* family
+below: signals DATE-TIME-PARSE-ERROR for STRING against the field-specific
+EXPECTED description."
+  (lambda ()
+    (error (quote date-time-parse-error) :string string :expected expected)))
+(defun %pattern-invalid-for-pattern (string pattern)
+  "Builds the niladic failure continuation used by the %PATTERN-READ-* family
+below: signals via %PATTERN-PARSE-ERROR for STRING against PATTERN's
+generic message."
+  (lambda ()
+    (%pattern-parse-error string pattern)))
 
-(defun %pattern-read-digits (string position width expected)
+(defun %pattern-read-digits (string position width expected on-success invalid)
   (if width (let ((end (+ position width)))
-      (values (%parse-fixed-integer string position end expected) end))
+      (funcall on-success (%parse-fixed-integer string position end expected) end))
     (let ((end position))
       (loop while (and (< end (length string)) (digit-char-p (char string end)))
             do (incf end))
-      (when (= end position)
-        (error 'date-time-parse-error :string string :expected expected))
-      (values (parse-integer string :start position :end end) end))))
+      (if (= end position) (funcall invalid)
+        (funcall on-success (parse-integer string :start position :end end) end)))))
 
-(defun %pattern-read-numeric-field (string position field width remaining pattern expected)
+(defun %pattern-read-numeric-field (string position field width remaining pattern expected on-success invalid)
   "Read a plain numeric pattern field (day-of-X, hour, minute, second, or a
-fractional-second/millisecond-of-day count) at POSITION. When WIDTH is 1 and
-another field immediately follows with no literal to bound a greedy digit
-run, the field must be exactly one digit. FIELD #\\S always reads exactly
-WIDTH digits, since fractional seconds have no narrower single-digit form;
-every other field reads a greedy run of digits (or exactly WIDTH of them
-when WIDTH > 1)."
-  (when (and
+fractional-second/millisecond-of-day count) at POSITION, calling ON-SUCCESS
+with (value end-position) on success. When WIDTH is 1 and another field
+immediately follows with no literal to bound a greedy digit run, the field
+must be exactly one digit. FIELD #\\S always reads exactly WIDTH digits,
+since fractional seconds have no narrower single-digit form; every other
+field reads a greedy run of digits (or exactly WIDTH of them when WIDTH >
+1), via %PATTERN-READ-DIGITS, threading ON-SUCCESS and INVALID through as
+its own continuations."
+  (if (and
       (= width 1)
       remaining
       (consp (first remaining))
       (eq (first (first remaining)) :field))
-    (%pattern-parse-error string pattern))
-  (if (char= field #\S) (let ((end (+ position width)))
-      (values (%parse-fixed-integer string position end expected) end))
-    (%pattern-read-digits
-      string
-      position
-      (if (= width 1) nil
-        width)
-      expected)))
+    (%pattern-parse-error string pattern)
+    (if (char= field #\S) (let ((end (+ position width)))
+        (funcall on-success (%parse-fixed-integer string position end expected) end))
+      (%pattern-read-digits
+        string
+        position
+        (if (= width 1) nil
+          width)
+        expected
+        on-success
+        invalid))))
 
-(defun %pattern-read-year (string position width remaining expected)
-  (if (and remaining (consp (first remaining)) (eq (first (first remaining)) :field)) (progn
-      (when (or
-          (< width 4)
-          (and (< position (length string)) (member (char string position) '(#\+ #\-))))
-        (error 'date-time-parse-error :string string :expected expected))
+(defun %pattern-read-year (string position width remaining expected on-success invalid)
+  (if (and remaining (consp (first remaining)) (eq (first (first remaining)) :field))
+    (if (or
+        (< width 4)
+        (and (< position (length string)) (member (char string position) (quote (#\+ #\-)))))
+      (funcall invalid)
       (let ((end (+ position width)))
-        (values (%parse-fixed-integer string position end expected) end)))
+        (funcall on-success (%parse-fixed-integer string position end expected) end)))
     (let ((start position))
-      (when (and (< position (length string)) (member (char string position) '(#\+ #\-)))
+      (when (and (< position (length string)) (member (char string position) (quote (#\+ #\-))))
         (incf position))
-      (multiple-value-bind (year end) (%pattern-read-digits string position nil expected)
-        (values
-          (if (and (< start (length string)) (char= (char string start) #\-)) (- year)
-            year)
-          end)))))
+      (%pattern-read-digits string position nil expected
+        (lambda (year end)
+          (funcall on-success
+            (if (and (< start (length string)) (char= (char string start) #\-)) (- year)
+              year)
+            end))
+        invalid))))
 
-(defun %pattern-read-text (string position remaining pattern)
-  (let ((literal (%pattern-next-literal remaining)))
-    (let ((end
-          (if literal (or
-              (search literal string :start2 position)
-              (%pattern-parse-error string pattern))
-            (length string))))
-      (when (= end position)
-        (%pattern-parse-error string pattern))
-      (values (subseq string position end) end))))
+(defun %pattern-read-text (string position remaining pattern on-success invalid)
+  (declare (ignore pattern))
+  (let* ((literal (%pattern-next-literal remaining))
+         (end
+        (if literal (or
+            (search literal string :start2 position)
+            (funcall invalid))
+          (length string))))
+    (if (= end position) (funcall invalid)
+      (funcall on-success (subseq string position end) end))))
 
 (defun %pattern-read-field (string position field width remaining pattern locale)
   (funcall
@@ -94,7 +111,14 @@ when WIDTH > 1)."
     (local-date-year (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (%pattern-read-year string position width remaining expected))
+  (%pattern-read-year
+    string
+    position
+    width
+    remaining
+    expected
+    (function values)
+    (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\M
@@ -106,16 +130,20 @@ when WIDTH > 1)."
     (if (< width 3) (%write-pattern-number stream month width)
       (write-string (%date-time-locale-month-name locale month width) stream)))
   :read
-  (if (< width 3) (if (= width 1) (progn
-        (when (and remaining (consp (first remaining)) (eq (first (first remaining)) :field))
-          (%pattern-parse-error string pattern))
-        (%pattern-read-digits string position nil expected))
-      (%pattern-read-digits string position width expected))
-    (multiple-value-bind (text end) (%pattern-read-text string position remaining pattern)
-      (let ((month (%date-time-locale-find-month locale text width)))
-        (unless month
-          (%pattern-parse-error string pattern))
-        (values month end)))))
+  (if (< width 3)
+    (if (= width 1)
+      (if (and remaining (consp (first remaining)) (eq (first (first remaining)) :field))
+        (%pattern-parse-error string pattern)
+        (%pattern-read-digits string position nil expected (function values)
+          (%pattern-invalid-for-expected string expected)))
+      (%pattern-read-digits string position width expected (function values)
+        (%pattern-invalid-for-expected string expected)))
+    (%pattern-read-text string position remaining pattern
+      (lambda (text end)
+        (let ((month (%date-time-locale-find-month locale text width)))
+          (if month (values month end)
+            (%pattern-parse-error string pattern))))
+      (%pattern-invalid-for-pattern string pattern))))
 
 (define-pattern-field
   #\d
@@ -128,7 +156,7 @@ when WIDTH > 1)."
     (local-date-day (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\D
@@ -141,7 +169,7 @@ when WIDTH > 1)."
     (day-of-year (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\Y
@@ -152,7 +180,14 @@ when WIDTH > 1)."
       (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (%pattern-read-year string position width remaining expected))
+  (%pattern-read-year
+    string
+    position
+    width
+    remaining
+    expected
+    (function values)
+    (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\w
@@ -166,7 +201,7 @@ when WIDTH > 1)."
       (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\e
@@ -179,7 +214,7 @@ when WIDTH > 1)."
     (%iso-weekday-number (%require-pattern-field date pattern field "a date"))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\E
@@ -194,11 +229,12 @@ when WIDTH > 1)."
       width)
     stream)
   :read
-  (multiple-value-bind (text end) (%pattern-read-text string position remaining pattern)
-    (let ((weekday (%date-time-locale-find-weekday locale text width)))
-      (unless weekday
-        (%pattern-parse-error string pattern))
-      (values weekday end))))
+  (%pattern-read-text string position remaining pattern
+    (lambda (text end)
+      (let ((weekday (%date-time-locale-find-weekday locale text width)))
+        (if weekday (values weekday end)
+          (%pattern-parse-error string pattern))))
+    (%pattern-invalid-for-pattern string pattern)))
 
 (define-pattern-field
   #\H
@@ -215,7 +251,7 @@ when WIDTH > 1)."
             hour))))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\h
@@ -232,7 +268,7 @@ when WIDTH > 1)."
             hour))))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\m
@@ -245,7 +281,7 @@ when WIDTH > 1)."
     (local-time-minute (%require-pattern-field time pattern field "a time"))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\s
@@ -258,7 +294,7 @@ when WIDTH > 1)."
     (local-time-second (%require-pattern-field time pattern field "a time"))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\S
@@ -273,7 +309,7 @@ when WIDTH > 1)."
       (expt 10 (- 9 width)))
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\X
@@ -287,7 +323,7 @@ when WIDTH > 1)."
     width
     pattern)
   :read
-  (%pattern-read-text string position remaining pattern))
+  (%pattern-read-text string position remaining pattern (function values) (%pattern-invalid-for-pattern string pattern)))
 
 (define-pattern-field
   #\V
@@ -299,7 +335,7 @@ when WIDTH > 1)."
     (if (time-zone-p resolved-zone) (write-string (time-zone-name resolved-zone) stream)
       (%pattern-error pattern "field V requires an IANA time zone")))
   :read
-  (%pattern-read-text string position remaining pattern))
+  (%pattern-read-text string position remaining pattern (function values) (%pattern-invalid-for-pattern string pattern)))
 
 (define-pattern-field
   #\A
@@ -311,7 +347,7 @@ when WIDTH > 1)."
       1000000)
     width)
   :read
-  (%pattern-read-numeric-field string position field width remaining pattern expected))
+  (%pattern-read-numeric-field string position field width remaining pattern expected (function values) (%pattern-invalid-for-expected string expected)))
 
 (define-pattern-field
   #\z
@@ -344,152 +380,45 @@ when WIDTH > 1)."
       (local-time-hour (%require-pattern-field time pattern field "a time")))
     stream)
   :read
-  (multiple-value-bind (text end) (%pattern-read-text string position remaining pattern)
-    (let ((meridiem (%date-time-locale-find-meridiem locale text)))
-      (unless meridiem
-        (%pattern-parse-error string pattern))
-      (values meridiem end))))
-
-(defun %pattern-value (field values)
-  (second (assoc field values)))
-
-(defun %pattern-width (field values)
-  (third (assoc field values)))
-
-(defun %pattern-present-p (field values)
-  (not (null (assoc field values))))
-
-(defun %pattern-build-date (string pattern values)
-  (let ((calendar
-        (some
-          (lambda (field)
-            (%pattern-present-p field values))
-          '(#\M #\d)))
-        (ordinal (%pattern-present-p #\D values))
-        (week
-        (some
-          (lambda (field)
-            (%pattern-present-p field values))
-          '(#\Y #\w #\e))))
-    (when (> (count-if #'identity (list calendar ordinal week)) 1)
-      (%pattern-parse-error string pattern))
-    (let ((date
-          (cond
-            (ordinal
-              (unless (and (%pattern-present-p #\y values) (not calendar))
-                (%pattern-parse-error string pattern))
-              (local-date-of-year-day (%pattern-value #\y values) (%pattern-value #\D values)))
-            (week
-              (unless (and
-                  (%pattern-present-p #\Y values)
-                  (%pattern-present-p #\w values)
-                  (%pattern-present-p #\e values))
-                (%pattern-parse-error string pattern))
-              (local-date-of-week-date
-                (%pattern-value #\Y values)
-                (%pattern-value #\w values)
-                (%pattern-value #\e values)))
-            (calendar
-              (unless (and
-                  (%pattern-present-p #\y values)
-                  (%pattern-present-p #\M values)
-                  (%pattern-present-p #\d values))
-                (%pattern-parse-error string pattern))
-              (make-local-date
-                (%pattern-value #\y values)
-                (%pattern-value #\M values)
-                (%pattern-value #\d values)))
-            (t nil))))
-      (when (and
-          (%pattern-present-p #\E values)
-          (or (not date) (not (eq (%pattern-value #\E values) (day-of-week date)))))
-        (%pattern-parse-error string pattern))
-      date)))
-
-(defun %pattern-build-time (string pattern values)
-  (let ((present
-        (some
-          (lambda (field)
-            (%pattern-present-p field values))
-          (list #\H #\h #\m #\s #\S #\a #\A))))
-    (when present
-      (let ((has-24-hour (%pattern-present-p #\H values))
-            (has-12-hour (%pattern-present-p #\h values))
-            (has-milli-of-day (%pattern-present-p #\A values))
-            (meridiem (%pattern-value #\a values)))
-        (when (and
-            has-milli-of-day
-            (or
-              has-24-hour
-              has-12-hour
-              meridiem
-              (%pattern-present-p #\m values)
-              (%pattern-present-p #\s values)
-              (%pattern-present-p #\S values)))
+  (%pattern-read-text string position remaining pattern
+    (lambda (text end)
+      (let ((meridiem (%date-time-locale-find-meridiem locale text)))
+        (unless meridiem
           (%pattern-parse-error string pattern))
-        (when has-milli-of-day
-          (return-from
-            %pattern-build-time
-            (local-time-of-nano-of-day (* (%pattern-value #\A values) 1000000))))
-        (unless (or has-24-hour has-12-hour)
-          (%pattern-parse-error string pattern))
-        (when (and has-24-hour has-12-hour)
-          (%pattern-parse-error string pattern))
-        (let ((hour
-              (if has-12-hour (let ((clock-hour (%pattern-value #\h values)))
-                  (unless (and (<= 1 clock-hour) (<= clock-hour 12) meridiem)
-                    (%pattern-parse-error string pattern))
-                  (if (eq meridiem :am) (if (= clock-hour 12) 0
-                      clock-hour)
-                    (if (= clock-hour 12) 12
-                      (+ clock-hour 12))))
-                (%pattern-value #\H values))))
-          (when (and
-              has-24-hour
-              meridiem
-              (not
-                (eq
-                  meridiem
-                  (if (< hour 12) :am
-                    :pm))))
+        (values meridiem end)))
+    (%pattern-invalid-for-pattern string pattern)))
+
+(defun %pattern-parse-parts (string parts position values pattern locale on-success)
+  "Walks PARTS (literal strings interleaved with field specs, as produced by
+DATE-TIME-FORMATTER-PARTS) against STRING starting at POSITION, threading
+the scan position and the accumulated field VALUES forward as an explicit
+continuation chain: matching a literal, or reading a field via
+%PATTERN-READ-FIELD, calls %PATTERN-PARSE-PARTS on the remaining PARTS as
+its own continuation -- step N's continuation IS step N+1's invocation --
+mirroring the nested-continuation style PARSE-POSIX-TZ-STRING uses to chain
+its own multi-step parse, instead of looping with mutation. Once PARTS is
+exhausted, calls ON-SUCCESS with the final VALUES and POSITION."
+  (if (null parts)
+    (funcall on-success values position)
+    (let ((part (first parts)))
+      (if (stringp part)
+        (let ((end (+ position (length part))))
+          (unless (and (<= end (length string)) (string= part string :start2 position :end2 end))
             (%pattern-parse-error string pattern))
-          (make-local-time
-            hour
-            (or (%pattern-value #\m values) 0)
-            (or (%pattern-value #\s values) 0)
-            (if (%pattern-present-p #\S values) (* (%pattern-value #\S values) (expt 10 (- 9 (%pattern-width #\S values))))
-              0)))))))
-
-(defun %pattern-build-value (string pattern values disambiguation)
-  (let* ((date (%pattern-build-date string pattern values))
-         (time (%pattern-build-time string pattern values))
-         (offset
-        (and
-          (%pattern-present-p #\X values)
-          (parse-zone-offset (%pattern-value #\X values))))
-         (zone
-        (and
-          (%pattern-present-p #\V values)
-          (find-time-zone (%pattern-value #\V values)))))
-    (when (and zone (not (and date time)))
-      (%pattern-parse-error string pattern))
-    (when (and offset (not time))
-      (%pattern-parse-error string pattern))
-    (cond
-      (zone
-        (let ((local (make-local-date-time date time)))
-          (if offset (progn
-              (unless (%local-date-time-has-offset-p local zone offset)
-                (%pattern-parse-error string pattern))
-              (%make-zoned-date-time local zone offset))
-            (zoned-date-time-of-local local zone :disambiguation disambiguation))))
-      ((and date time offset)
-        (make-offset-date-time (make-local-date-time date time) offset))
-      ((and date time) (make-local-date-time date time))
-      ((and time offset) (make-offset-time time offset))
-      (date date)
-      (time time)
-      (t (%pattern-parse-error string pattern)))))
+          (%pattern-parse-parts string (rest parts) end values pattern locale on-success))
+        (let ((field (second part)))
+          (when (%pattern-present-p field values)
+            (%pattern-parse-error string pattern))
+          (multiple-value-bind (value end)
+              (%pattern-read-field string position field (third part) (rest parts) pattern locale)
+            (%pattern-parse-parts
+              string
+              (rest parts)
+              end
+              (cons (list field value (third part)) values)
+              pattern
+              locale
+              on-success)))))))
 
 (defun parse-date-time (formatter string &key (disambiguation :compatible))
   "Parse STRING using compiled DATE-TIME-FORMATTER FORMATTER.
@@ -504,35 +433,21 @@ weekday name and AM/PM marker must agree with the reconstructed date and H
       (format nil "input matching pattern ~S" (date-time-formatter-pattern formatter)))
     (unless (stringp string)
       (%pattern-parse-error string (date-time-formatter-pattern formatter)))
-    (let ((position 0)
-          (values '())
-          (parts (date-time-formatter-parts formatter)))
-      (loop for tail on parts
-            for part = (first tail)
-            do (if (stringp part) (let ((end (+ position (length part))))
-            (unless (and (<= end (length string)) (string= part string :start2 position :end2 end))
-              (%pattern-parse-error string (date-time-formatter-pattern formatter)))
-            (setf position end))
-          (let ((field (second part)))
-            (when (%pattern-present-p field values)
-              (%pattern-parse-error string (date-time-formatter-pattern formatter)))
-            (multiple-value-bind (value end) (%pattern-read-field
-                string
-                position
-                field
-                (third part)
-                (rest tail)
-                (date-time-formatter-pattern formatter)
-                (date-time-formatter-locale formatter))
-              (push (list field value (third part)) values)
-              (setf position end)))))
-      (unless (= position (length string))
-        (%pattern-parse-error string (date-time-formatter-pattern formatter)))
-      (%pattern-build-value
-        string
-        (date-time-formatter-pattern formatter)
-        values
-        disambiguation))))
+    (%pattern-parse-parts
+      string
+      (date-time-formatter-parts formatter)
+      0
+      '()
+      (date-time-formatter-pattern formatter)
+      (date-time-formatter-locale formatter)
+      (lambda (values end-position)
+        (unless (= end-position (length string))
+          (%pattern-parse-error string (date-time-formatter-pattern formatter)))
+        (%pattern-build-value
+          string
+          (date-time-formatter-pattern formatter)
+          values
+          disambiguation)))))
 
 (defun parse-date-time-with-pattern (pattern string &key (disambiguation :compatible) (locale :en))
   "Parse STRING with PATTERN and LOCALE without retaining a formatter instance."

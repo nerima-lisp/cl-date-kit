@@ -172,12 +172,29 @@
               (list (duration-of-seconds -1 999999999)
                     (duration-zero)
                     -1)
+              (list (duration-of-seconds 1 500000000)
+                    (duration-of-seconds 1 200000000)
+                    1)
               (list (duration-of-seconds large-seconds 7)
                     (duration-of-seconds large-seconds 7)
                     0)))
           (expect
             (duration-compare (first comparison) (second comparison))
             :to-be (third comparison))))))
+
+(it
+  "DURATION-MULTIPLIED-BY scales a duration by an integral factor"
+  (expect
+    (duration= (duration-multiplied-by (duration-of-seconds 2) 3) (duration-of-seconds 6))
+    :to-be-truthy))
+
+(it
+  "DURATION-DIVIDED-BY truncates the quotient toward zero"
+  (expect
+    (duration=
+      (duration-divided-by (duration-of-seconds 10) 3)
+      (duration-of-seconds 3 333333333))
+    :to-be-truthy))
 
 (it
   "signals a structured condition for zero divisors"
@@ -202,6 +219,13 @@
     "truncates fractional microseconds toward zero"
     (expect (duration-to-micros (duration-of-nanos -1501)) :to-be -1)
     (expect (duration-to-micros (duration-of-nanos 1501)) :to-be 1)))
+
+(describe
+  "duration millisecond conversions"
+  (it
+    "truncates fractional milliseconds toward zero"
+    (expect (duration-to-millis (duration-of-nanos 1500999)) :to-be 1)
+    (expect (duration-to-millis (duration-of-nanos -1500999)) :to-be -1)))
 
 (describe
   "duration component conversions"
@@ -238,6 +262,20 @@
       (duration=
        (duration-truncated-to (duration-of-seconds 3661 987654321) :minutes)
        (duration-of-seconds 3660))
+      :to-be-truthy))
+  (it
+    "leaves a negative duration with no nanosecond remainder unchanged"
+    (expect
+      (duration=
+       (duration-truncated-to (duration-of-seconds -5) :seconds)
+       (duration-of-seconds -5))
+      :to-be-truthy))
+  (it
+    "truncates a positive duration to a sub-second fixed unit"
+    (expect
+      (duration=
+       (duration-truncated-to (duration-of-seconds 5 123456789) :millis)
+       (duration-of-seconds 5 123000000))
       :to-be-truthy))
   (it
     "truncates negative durations toward zero"
@@ -322,6 +360,22 @@
        (mode)
      (expect (duration= (cl-date-kit:duration-rounded-to (duration-of-seconds -2) :seconds :mode mode)
                         (duration-of-seconds -2)) :to-be-truthy))
+   (it
+    "defaults MODE to :HALF-EVEN when unspecified"
+    (expect
+      (duration= (cl-date-kit:duration-rounded-to (duration-of-millis 1500) :seconds)
+                 (duration-of-seconds 2))
+      :to-be-truthy))
+   (it
+    "rounds a non-tie value up under :half-up and :half-even"
+    (expect
+      (duration= (cl-date-kit:duration-rounded-to (duration-of-millis 1600) :seconds :mode :half-up)
+                 (duration-of-seconds 2))
+      :to-be-truthy)
+    (expect
+      (duration= (cl-date-kit:duration-rounded-to (duration-of-millis 1600) :seconds :mode :half-even)
+                 (duration-of-seconds 2))
+      :to-be-truthy))
    (it
     "rejects invalid rounding modes"
     (signals type-error

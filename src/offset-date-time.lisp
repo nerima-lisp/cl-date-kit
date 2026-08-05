@@ -245,20 +245,7 @@ OFFSET-DATE-TIME's unchanged OFFSET."
     (offset-date-time-to-instant a)
     (offset-date-time-to-instant b)))
 
-(defun offset-date-time= (a b)
-  (zerop (offset-date-time-compare a b)))
-
-(defun offset-date-time< (a b)
-  (minusp (offset-date-time-compare a b)))
-
-(defun offset-date-time<= (a b)
-  (not (plusp (offset-date-time-compare a b))))
-
-(defun offset-date-time> (a b)
-  (plusp (offset-date-time-compare a b)))
-
-(defun offset-date-time>= (a b)
-  (not (minusp (offset-date-time-compare a b))))
+(define-ordering-operators offset-date-time offset-date-time-compare)
 
 (defun offset-date-time-now (&key (offset (zone-offset-utc)) (clock (current-clock)))
   (offset-date-time-of-instant (clock-now clock) offset))

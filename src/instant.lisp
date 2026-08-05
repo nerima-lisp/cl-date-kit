@@ -198,20 +198,7 @@ Sub-microsecond values round down on the UTC timeline."
     ((> (instant-nanosecond a) (instant-nanosecond b)) 1)
     (t 0)))
 
-(defun instant= (a b)
-  (zerop (instant-compare a b)))
-
-(defun instant< (a b)
-  (minusp (instant-compare a b)))
-
-(defun instant<= (a b)
-  (not (plusp (instant-compare a b))))
-
-(defun instant> (a b)
-  (plusp (instant-compare a b)))
-
-(defun instant>= (a b)
-  (not (minusp (instant-compare a b))))
+(define-ordering-operators instant instant-compare)
 
 (progn
   (defun %instant-truncated-to-unit (instant unit-nanos)

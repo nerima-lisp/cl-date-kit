@@ -33,7 +33,7 @@
       (report-directory (coverage-report-directory)))
   (configure-local-source-registry root)
   (ensure-directories-exist report-directory)
-  (asdf:load-system "cl-date-kit" :force "cl-date-kit")
+  (asdf:load-system "cl-date-kit" :force t)
   (declaim (optimize (sb-cover:store-coverage-data 0)))
   (asdf:test-system "cl-date-kit/test")
   (sb-cover:report report-directory :if-matches (project-source-p root))

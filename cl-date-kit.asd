@@ -13,7 +13,7 @@
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.3.0"
+  :version "1.0.0"
   :homepage "https://github.com/nerima-lisp/cl-date-kit"
   :bug-tracker "https://github.com/nerima-lisp/cl-date-kit/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-date-kit.git")
@@ -21,6 +21,7 @@
   :pathname "src"
   :serial t
   :components ((:file "package")
+    (:file "macros")
     (:file "conditions")
     (:file "duration")
     (:file "period")
@@ -44,6 +45,7 @@
      (:file "zone-local")
      (:file "offset-time")
    (:file "zoned-date-time")
+   (:file "zoned-date-time-arithmetic")
    (:file "rrule")
    (:file "rrule-codec")
    (:file "rrule-date-selection")
@@ -52,10 +54,13 @@
    (:file "rrule-set")
    (:file "offset-date-time")
     (:file "iso8601-date")
+    (:file "iso8601-year-month-day")
     (:file "iso8601")
+    (:file "iso8601-offset")
     (:file "iso8601-amounts")
     (:file "locale")
     (:file "pattern")
+    (:file "pattern-builder")
     (:file "pattern-parser"))
   :in-order-to ((asdf:test-op (asdf:test-op "cl-date-kit/test"))))
 
@@ -66,11 +71,11 @@
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.3.0"
+  :version "1.0.0"
   :homepage "https://github.com/nerima-lisp/cl-date-kit"
   :bug-tracker "https://github.com/nerima-lisp/cl-date-kit/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-date-kit.git")
-  :depends-on ("cl-date-kit" (:version "cl-weave" "1.1.0"))
+  :depends-on ("cl-date-kit" (:version "cl-weave" "1.3.0"))
   :pathname "t"
   :serial t
   :components ((:file "package")
@@ -87,12 +92,20 @@
     (:file "interval-test")
     (:file "clock-test")
    (:file "zone-test")
+   (:file "zone-database-test")
+   (:file "zone-transition-test")
+   (:file "zone-state-test")
+   (:file "posix-tz-test")
    (:file "zoned-date-time-test")
+   (:file "zoned-date-time-arithmetic-test")
    (:file "rrule-test")
+   (:file "rrule-occurrences-test")
+   (:file "rrule-schedule-test")
    (:file "rrule-set-test")
    (:file "offset-date-time-test")
     (:file "offset-time-test")
     (:file "iso8601-test")
+    (:file "iso8601-offset-test")
     (:file "locale-test")
     (:file "pattern-test"))
   :perform (asdf:test-op

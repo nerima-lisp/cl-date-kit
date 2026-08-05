@@ -103,21 +103,20 @@
       (expect (instant< (make-instant 1) (make-instant 2)) :to-be-truthy)
       (expect (instant> (make-instant 2) (make-instant 1)) :to-be-truthy)
       (expect (instant= (make-instant 1 500) (make-instant 1 500)) :to-be-truthy))
-    (it
-      "compares seconds before nanoseconds at arbitrary epoch magnitudes"
-      (let ((large-epoch (expt 10 100)))
-        (dolist (case
-                 (list
-                  (list (make-instant large-epoch 0)
-                        (make-instant large-epoch 1)
-                        -1)
-                  (list (make-instant -1 999999999) (make-instant 0 0) -1)
-                  (list (make-instant large-epoch 7)
-                        (make-instant large-epoch 7)
-                        0)))
-          (expect (instant-compare (first case) (second case))
-                  :to-be
-                  (third case))))))
+    (it-each
+        (("a large epoch second before another at the same magnitude"
+          #.(expt 10 100) 0 #.(expt 10 100) 1 -1)
+         ("a negative instant before the epoch"
+          -1 999999999 0 0 -1)
+         ("equal instants at a large epoch magnitude"
+          #.(expt 10 100) 7 #.(expt 10 100) 7 0))
+        "compares ~A"
+        (label a-second a-nano b-second b-nano expected)
+      (declare (ignore label))
+      (expect
+        (instant-compare (make-instant a-second a-nano) (make-instant b-second b-nano))
+        :to-be
+        expected)))
   (describe
     "fixed-unit truncation"
     (it
@@ -141,26 +140,27 @@
 
 (describe
   "epoch unit conversions"
-  (it
-    "round-trip zero, negative, unit-boundary, and bignum values"
-    (dolist
-        (conversion
-         (list
-          (list (function instant-of-epoch-nanos) (function instant-to-epoch-nanos) 1000000000)
-          (list (function instant-of-epoch-millis) (function instant-to-epoch-millis) 1000)
-          (list (function instant-of-epoch-micros) (function instant-to-epoch-micros) 1000000)))
-      (destructuring-bind (constructor accessor unit) conversion
-        (dolist (value
-                 (list
-                  -1
-                  0
-                  1
-                  (1- unit)
-                  unit
-                  (1+ unit)
-                  (* -1 (1+ unit))
-                  (+ (* (expt 10 100) unit) 1)))
-          (expect (funcall accessor (funcall constructor value)) :to-be value)))))
+  (it-each
+      (("nanoseconds" instant-of-epoch-nanos instant-to-epoch-nanos 1000000000)
+       ("milliseconds" instant-of-epoch-millis instant-to-epoch-millis 1000)
+       ("microseconds" instant-of-epoch-micros instant-to-epoch-micros 1000000))
+      "round-trips zero, negative, unit-boundary, and bignum ~A values"
+      (label constructor accessor unit)
+    (declare (ignore label))
+    (dolist (value
+             (list
+              -1
+              0
+              1
+              (1- unit)
+              unit
+              (1+ unit)
+              (* -1 (1+ unit))
+              (+ (* (expt 10 100) unit) 1)))
+      (expect
+        (funcall (symbol-function accessor) (funcall (symbol-function constructor) value))
+        :to-be
+        value)))
   (it
     "rejects non-integer epoch nanoseconds"
     (signals type-error (instant-of-epoch-nanos 1.5))))

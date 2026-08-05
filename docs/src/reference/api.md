@@ -453,7 +453,7 @@ bounds signal `INVALID-INTERVAL`. The result is `NIL` for fixed-offset zones
 and for ranges without transitions. It includes future transitions supplied by
 a POSIX TZ footer.
 
-## ZonedDateTime (`src/zoned-date-time.lisp`)
+## ZonedDateTime (`src/zoned-date-time.lisp`, `src/zoned-date-time-arithmetic.lisp`)
 
 A resolved, real-world timestamp: a `LOCAL-DATE-TIME` plus the `ZONE` and
 `ZONE-OFFSET` it resolved to.
@@ -677,7 +677,7 @@ boundary; equivalent UTC times therefore produce zero. `OFFSET-TIME-COMPARE`,
 retain a total order.
 `OFFSET-TIME-NOW` takes `:OFFSET` and `:CLOCK` keywords.
 
-## ISO8601 (`src/iso8601-date.lisp`, `src/iso8601.lisp`)
+## ISO8601 (`src/iso8601-date.lisp`, `src/iso8601.lisp`, `src/iso8601-offset.lisp`)
 
 `FORMAT-LOCAL-DATE`/`PARSE-LOCAL-DATE` (canonical "YYYY-MM-DD" output;
 parses calendar, ordinal, and week date forms in both extended and basic

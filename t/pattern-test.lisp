@@ -338,14 +338,79 @@
         (parse-date-time-with-pattern
           "EEEE, MMMM d yyyy HH:mm a"
           "Thursday, February 29 2024 13:05 AM")))
-    (it
-      "registers every pattern field with both a writer and a reader"
-      (loop for character across cl-date-kit::+pattern-fields+
-            for spec = (gethash character cl-date-kit::*pattern-fields*)
-            do (progn
-          (expect spec :to-be-truthy)
-          (expect (functionp (cl-date-kit::pattern-field-spec-writer spec)) :to-be-truthy)
-          (expect (functionp (cl-date-kit::pattern-field-spec-reader spec)) :to-be-truthy)))))
+    (progn
+      (it
+        "registers every pattern field with both a writer and a reader"
+        (loop for character across cl-date-kit::+pattern-fields+
+              for spec = (gethash character cl-date-kit::*pattern-fields*)
+              do (progn
+            (expect spec :to-be-truthy)
+            (expect (functionp (cl-date-kit::pattern-field-spec-writer spec)) :to-be-truthy)
+            (expect (functionp (cl-date-kit::pattern-field-spec-reader spec)) :to-be-truthy))))
+      (it-each
+          (("ddd") ("DDDD") ("www") ("eee") ("HHH") ("mmm") ("sss") ("SSSSSSSSSS") ("XXXX") ("VV"))
+          "rejects pattern ~S for exceeding its field's supported width"
+          (pattern)
+        (signals date-time-format-error (make-date-time-formatter pattern)))
+      (it
+        "rejects a pattern that is not a string or that contains an unregistered field letter"
+        (signals date-time-format-error (make-date-time-formatter 12345))
+        (signals date-time-format-error (make-date-time-formatter "G")))
+      (it
+        "unescapes a doubled single quote inside a quoted literal"
+        (expect
+          (format-date-time-with-pattern "'don''t' yyyy" (make-local-date 2024 2 29))
+          :to-equal
+          "don't 2024"))
+      (it
+        "formats the numeric offset field at every supported width and rejects lossy sub-minute seconds"
+        (let ((sub-minute (offset-time-of 7 5 9 0 (zone-offset-of-hms 9 30 15))))
+          (expect
+            (format-date-time-with-pattern "X" (offset-time-of 7 5 9 0 (zone-offset-of-hms 9 0 0)))
+            :to-equal
+            "+09")
+          (expect
+            (format-date-time-with-pattern "XX" (offset-time-of 7 5 9 0 (zone-offset-of-hms 9 30 0)))
+            :to-equal
+            "+0930")
+          (expect (format-date-time-with-pattern "XXX" sub-minute) :to-equal "+09:30:15")
+          (signals date-time-format-error (format-date-time-with-pattern "X" sub-minute))
+          (signals date-time-format-error (format-date-time-with-pattern "XX" sub-minute))))
+      (it
+        "rejects formatting an unsupported value and a malformed formatter or parse input"
+        (signals date-time-format-error (format-date-time-with-pattern "yyyy" 42))
+        (signals type-error (format-date-time "not-a-formatter" (make-local-date 2024 1 1)))
+        (signals type-error (parse-date-time "not-a-formatter" "2024-01-01"))
+        (signals
+          date-time-parse-error
+          (parse-date-time (make-date-time-formatter "yyyy-MM-dd") 12345)))
+      (it
+        "reports field V against a fixed offset zone as not IANA"
+        (signals
+          date-time-format-error
+          (format-date-time-with-pattern "V" (make-instant 0) :zone (zone-offset-of-hms 9 0 0))))
+      (it
+        "signals when DEFINE-PATTERN-FIELD is registered without a required clause"
+        (signals error (macroexpand-1 '(cl-date-kit::define-pattern-field #\Q :read (values))))
+        (signals
+          error
+          (macroexpand-1 '(cl-date-kit::define-pattern-field #\Q :write (values)))))
+      (it-property
+          "PARSE-DATE-TIME-WITH-PATTERN inverts FORMAT-DATE-TIME-WITH-PATTERN for any LOCAL-DATE-TIME"
+          ((year (gen-integer :min 1 :max 9999))
+           (month (gen-integer :min 1 :max 12))
+           (day (gen-integer :min 1 :max 28))
+           (hour (gen-integer :min 0 :max 23))
+           (minute (gen-integer :min 0 :max 59))
+           (second (gen-integer :min 0 :max 59)))
+        (let ((value (local-date-time-of year month day hour minute second)))
+          (expect
+            (local-date-time=
+              (parse-date-time-with-pattern
+                "yyyy-MM-dd'T'HH:mm:ss"
+                (format-date-time-with-pattern "yyyy-MM-dd'T'HH:mm:ss" value))
+              value)
+            :to-be-truthy)))))
   (describe
     "pattern parser boundary behavior"
     (it
@@ -381,4 +446,38 @@
         :to-be-truthy)
       (expect
         (offset-time-p (parse-date-time-with-pattern "HH:mmXXX" "07:05+09:00"))
-        :to-be-truthy))))
+        :to-be-truthy))
+    (it
+      "rejects an ambiguous run of adjacent single-width numeric fields"
+      (signals date-time-parse-error (parse-date-time-with-pattern "Md" "115"))
+      (signals date-time-parse-error (parse-date-time-with-pattern "Hm" "0530")))
+    (it
+      "reads a single-width M field as a greedy digit run when unambiguous"
+      (expect
+        (local-date=
+          (parse-date-time-with-pattern "M/d/yyyy" "3/5/2024")
+          (make-local-date 2024 3 5))
+        :to-be-truthy))
+    (it
+      "signals when a single-width numeric field has no digits to read"
+      (signals date-time-parse-error (parse-date-time-with-pattern "d" "x")))
+    (it
+      "parses an explicitly signed extended year that is not adjacent to another field"
+      (expect
+        (local-date=
+          (parse-date-time-with-pattern "y-MM-dd" "-0044-01-01")
+          (make-local-date -44 1 1))
+        :to-be-truthy))
+    (it
+      "signals on a literal mismatch and on a duplicated pattern field"
+      (signals date-time-parse-error (parse-date-time-with-pattern "yyyy-MM-dd" "2024/02/29"))
+      (signals date-time-parse-error (parse-date-time-with-pattern "yyyy-yyyy" "2024-2025")))
+    (it
+      "signals when a text field's delimiter is absent or matches with no text before it"
+      (signals date-time-parse-error (parse-date-time-with-pattern "MMMM d" "February5"))
+      (signals date-time-parse-error (parse-date-time-with-pattern "EEEE-d" "-15")))
+    (it
+      "signals when parsed weekday text is not a locale weekday name"
+      (signals
+        date-time-parse-error
+        (parse-date-time-with-pattern "EEEE, yyyy-MM-dd" "Blahday, 2024-02-29")))))

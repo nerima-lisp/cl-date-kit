@@ -58,11 +58,7 @@
                      ((plusp day-delta) 1)
                      (t 0)))))))
 
-(defun month-day= (a b) (zerop (month-day-compare a b)))
-(defun month-day< (a b) (minusp (month-day-compare a b)))
-(defun month-day<= (a b) (not (plusp (month-day-compare a b))))
-(defun month-day> (a b) (plusp (month-day-compare a b)))
-(defun month-day>= (a b) (not (minusp (month-day-compare a b))))
+(define-ordering-operators month-day month-day-compare)
 
 (defun month-day-with-month (value month)
   "Returns VALUE with MONTH replaced, clamping to the target month's end."

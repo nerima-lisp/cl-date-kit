@@ -47,7 +47,16 @@
     (signals invalid-date (make-local-date 2024 2 1.0)))
   (it
     "accepts February 29 in a leap year"
-    (expect (local-date-day (make-local-date 2024 2 29)) :to-be 29)))
+    (expect (local-date-day (make-local-date 2024 2 29)) :to-be 29))
+  (it
+    "signals a CL-DATE-KIT-ERROR that catches INVALID-DATE without naming it"
+    (let ((condition
+          (handler-case (make-local-date 2023 2 30)
+            (cl-date-kit-error (signaled) signaled))))
+      (expect (typep condition 'invalid-date) :to-be-truthy)
+      (expect (invalid-date-year condition) :to-be 2023)
+      (expect (invalid-date-month condition) :to-be 2)
+      (expect (invalid-date-day condition) :to-be 30))))
 
 (describe
   "epoch-day conversion (Howard Hinnant's days_from_civil/civil_from_days)"
@@ -57,19 +66,19 @@
   (it
     "1969-12-31 is epoch day -1"
     (expect (local-date-to-epoch-day (make-local-date 1969 12 31)) :to-be -1))
-  (it
-    "round-trips through LOCAL-DATE-FROM-EPOCH-DAY for a range of dates"
-    (dolist (date
-        (list
-          (make-local-date 1 1 1)
-          (make-local-date 1600 2 29)
-          (make-local-date 1900 1 1)
-          (make-local-date 2000 2 29)
-          (make-local-date 2024 3 10)
-          (make-local-date 2400 12 31)))
-      (expect
-        (local-date= (local-date-from-epoch-day (local-date-to-epoch-day date)) date)
-        :to-be-truthy))))
+  (progn
+    (it-each
+        ((1 1 1) (1600 2 29) (1900 1 1) (2000 2 29) (2024 3 10) (2400 12 31))
+        "round-trips ~A-~A-~A through LOCAL-DATE-FROM-EPOCH-DAY"
+        (year month day)
+      (let ((date (make-local-date year month day)))
+        (expect
+          (local-date= (local-date-from-epoch-day (local-date-to-epoch-day date)) date)
+          :to-be-truthy)))
+    (it-property
+        "LOCAL-DATE-FROM-EPOCH-DAY inverts LOCAL-DATE-TO-EPOCH-DAY for any epoch day"
+        ((day (gen-integer :min -700000 :max 700000)))
+      (expect (local-date-to-epoch-day (local-date-from-epoch-day day)) :to-equal day))))
 
 (describe
   "date/time composition"
@@ -201,7 +210,14 @@
         :to-be-truthy)
       (expect
         (local-date= (local-date-minus-years (local-date-plus-years date 3) 3) date)
-        :to-be-truthy))))
+        :to-be-truthy)))
+  (it
+    "LOCAL-DATE-MINUS-WEEKS is the inverse of LOCAL-DATE-PLUS-WEEKS"
+    (expect
+      (local-date=
+        (local-date-minus-weeks (local-date-plus-weeks (make-local-date 2024 6 15) 3) 3)
+        (make-local-date 2024 6 15))
+      :to-be-truthy)))
 
 (describe
   "period-based arithmetic and LOCAL-DATE-UNTIL"
@@ -229,7 +245,23 @@
           (local-date-until (make-local-date 2021 3 1) (make-local-date 2020 1 31))))
       (expect (period-years period) :to-be -1)
       (expect (period-months period) :to-be -1)
-      (expect (period-days period) :to-be -1))))
+      (expect (period-days period) :to-be -1)))
+  (it
+    "LOCAL-DATE-UNTIL needs no day borrow when the day-of-month does not decrease"
+    (let ((period
+          (local-date-until (make-local-date 2024 1 15) (make-local-date 2024 3 15))))
+      (expect (period-years period) :to-be 0)
+      (expect (period-months period) :to-be 2)
+      (expect (period-days period) :to-be 0)))
+  (it
+    "LOCAL-DATE-MINUS-PERIOD is the inverse of LOCAL-DATE-PLUS-PERIOD"
+    (let* ((date (make-local-date 2024 3 1))
+           (period (make-period :years 1 :months 1 :days 1)))
+      (expect
+        (local-date=
+          (local-date-minus-period (local-date-plus-period date period) period)
+          date)
+        :to-be-truthy))))
 
 (describe
   "ordering"
@@ -279,6 +311,11 @@
     (signals
       invalid-date
       (cl-date-kit:local-date-with-day (make-local-date 2024 2 1) 30)))
+  (it
+    "LOCAL-DATE-WITH-MONTH rejects a non-integral month distinctly from an out-of-range one"
+    (signals
+      invalid-date
+      (cl-date-kit:local-date-with-month (make-local-date 2024 1 1) :february)))
   (it
     "calendar boundary adjusters return immutable values"
     (let ((date (make-local-date 2024 2 15)))

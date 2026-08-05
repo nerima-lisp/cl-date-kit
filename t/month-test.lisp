@@ -50,4 +50,13 @@
     (signals cl-date-kit:invalid-month (cl-date-kit:month-min-length :smarch))
     (signals type-error (cl-date-kit:month-length :january :true))
     (signals type-error (cl-date-kit:month-first-day-of-year :january 1))
-    (expect (cl-date-kit:month-plus :march -25) :to-be :february)))
+    (expect (cl-date-kit:month-plus :march -25) :to-be :february))
+  (it
+    "rejects a non-integral month value distinctly from an out-of-range one"
+    (signals cl-date-kit:invalid-month (cl-date-kit:month-from-value "1"))
+    (signals cl-date-kit:invalid-month (cl-date-kit:month-from-value :january)))
+  (it
+    "MONTH-NOW defaults to the dynamically scoped CURRENT-CLOCK"
+    (with-clock
+        ((make-fixed-clock (make-instant 0)))
+      (expect (month-now) :to-be :january))))

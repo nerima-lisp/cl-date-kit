@@ -133,20 +133,7 @@ LOCAL-TIME and rewrapping the result with OFFSET-TIME's unchanged OFFSET."
     (if (zerop utc-comparison) (local-time-compare (offset-time-local-time a) (offset-time-local-time b))
       utc-comparison)))
 
-(defun offset-time= (a b)
-  (zerop (offset-time-compare a b)))
-
-(defun offset-time< (a b)
-  (minusp (offset-time-compare a b)))
-
-(defun offset-time<= (a b)
-  (not (plusp (offset-time-compare a b))))
-
-(defun offset-time> (a b)
-  (plusp (offset-time-compare a b)))
-
-(defun offset-time>= (a b)
-  (not (minusp (offset-time-compare a b))))
+(define-ordering-operators offset-time offset-time-compare)
 
 (defmethod duration-between ((start offset-time) (end offset-time))
   (duration-between (%offset-time-utc-time start) (%offset-time-utc-time end)))

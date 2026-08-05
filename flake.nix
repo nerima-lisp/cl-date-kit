@@ -9,7 +9,7 @@
     # cl-weave is a test-only dependency (see cl-date-kit.asd), so only its
     # source tree is needed here, not its flake outputs.
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.1.4";
+      url = "github:nerima-lisp/cl-weave/v1.3.0";
       flake = false;
     };
 
@@ -222,7 +222,7 @@
           '';
           isolatedLispCache = ''
             ${isolatedLispEnvironment}
-            export ASDF_OUTPUT_TRANSLATIONS="(:output-translations (t \"$temporary_home/fasl/\" :implementation) :inherit-configuration)"
+            export ASDF_OUTPUT_TRANSLATIONS="(:output-translations (t (\"$temporary_home/fasl/\" :implementation)) :inherit-configuration)"
             mkdir -p "$temporary_home/fasl"
           '';
           benchmarkScript = pkgs.writeText "cl-date-kit-benchmark.lisp" ''

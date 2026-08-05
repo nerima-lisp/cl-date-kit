@@ -74,8 +74,4 @@
   (let ((delta (- (year-value a) (year-value b))))
     (cond ((minusp delta) -1) ((plusp delta) 1) (t 0))))
 
-(defun year= (a b) (zerop (year-compare a b)))
-(defun year< (a b) (minusp (year-compare a b)))
-(defun year<= (a b) (not (plusp (year-compare a b))))
-(defun year> (a b) (plusp (year-compare a b)))
-(defun year>= (a b) (not (minusp (year-compare a b))))
+(define-ordering-operators year year-compare)
