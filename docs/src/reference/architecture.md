@@ -104,11 +104,30 @@ itself, turns one function that did two things into two functions that
 each do one -- the same shape as the streaming-iteration case, applied to
 a search instead of an unbounded enumeration.
 
-**Destination-passing, a close relative.** `ISO8601.LISP`'s `%WRITE-*`
-functions (`%WRITE-LOCAL-DATE-TIME`, `%WRITE-ZONE-OFFSET`, and so on) take
-a `STREAM` argument and write to it rather than returning a string, so a
-composite formatter like `FORMAT-OFFSET-DATE-TIME` writes its date, time,
-and offset pieces directly onto one shared stream inside a single
-`WITH-OUTPUT-TO-STRING`, instead of allocating and concatenating three
-intermediate strings. `PATTERN.LISP`'s `%WRITE-PATTERN-FIELD` follows the
-same shape for the compiled pattern formatter.
+**Sequencing dependent parse steps whose failure path already needed a
+continuation.** `POSIX-TZ.LISP`'s POSIX-TZ grammar parser
+(`%PARSE-POSIX-NAME-OFFSET`, `%PARSE-POSIX-RULE-TIME`, `%PARSE-POSIX-RULE`)
+already took an `INVALID` continuation for malformed input, since the right
+response to a grammar violation is to call `ERROR` from wherever the
+violation is noticed, not to thread an error value back up through every
+caller. Once failure was continuation-based, giving each parser an
+`ON-SUCCESS` continuation alongside it -- rather than returning the parsed
+value via `VALUES` -- let `PARSE-POSIX-TZ-STRING` chain the steps that
+depend on each other's output as nested continuations: parse the zone
+name/offset, and inside that success continuation parse the daylight
+name/offset, and inside that parse the DST-start rule, and inside that parse
+the DST-end rule, building the `POSIX-TZ-RULE` struct only once every step
+has succeeded. It's the same "each step's continuation is the next step's
+invocation" shape as the search-selection case above, applied to a chain of
+dependent parses instead of a scan over a fixed collection.
+
+**Destination-passing, a close relative.** The `%WRITE-*` functions spread
+across `ISO8601.LISP`, `ISO8601-DATE.LISP`, and `ISO8601-OFFSET.LISP`
+(`%WRITE-LOCAL-DATE-TIME`, `%WRITE-LOCAL-DATE`, `%WRITE-ZONE-OFFSET`, and so
+on) take a `STREAM` argument and write to it rather than returning a
+string, so a composite formatter like `FORMAT-OFFSET-DATE-TIME` -- itself
+in `ISO8601-OFFSET.LISP` -- writes its date, time, and offset pieces,
+sourced from across those files, directly onto one shared stream inside a
+single `WITH-OUTPUT-TO-STRING`, instead of allocating and concatenating
+three intermediate strings. `PATTERN.LISP`'s `%WRITE-PATTERN-FIELD` follows
+the same shape for the compiled pattern formatter.

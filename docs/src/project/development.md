@@ -50,7 +50,7 @@ not an absolute performance claim.
 Without Nix:
 
 ```sh
-git clone --branch v1.0.1 https://github.com/nerima-lisp/cl-weave.git /path/to/cl-weave
+git clone --branch v1.3.0 https://github.com/nerima-lisp/cl-weave.git /path/to/cl-weave
 CL_SOURCE_REGISTRY="/path/to/cl-weave//:$(pwd)//" timeout --kill-after=10s 120s sbcl --script run-tests.lisp
 ```
 
