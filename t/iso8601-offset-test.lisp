@@ -1,10 +1,4 @@
-;;;; t/iso8601-offset-test.lisp
 (in-package #:cl-date-kit/test)
-
-;;; Offset/zone-aware ISO 8601 types: ZoneOffset, OffsetDateTime, OffsetTime,
-;;; ZonedDateTime, and the Duration/Period amount round-trips (including the
-;;; PARSE-DURATION/FORMAT-DURATION property test). See iso8601-test.lisp for
-;;; the naive (zone-less) date/time types.
 
 (progn
   (describe
@@ -236,7 +230,7 @@
 (describe
   "Duration"
   (it
-    "formats as java.time's PT-style duration string"
+    "formats as an ISO duration string"
     (expect (format-duration (duration-of-seconds 3661)) :to-equal "PT1H1M1S")
     (expect (format-duration (duration-zero)) :to-equal "PT0S")
     (expect (format-duration (duration-of-minutes 15)) :to-equal "PT15M"))

@@ -1,10 +1,3 @@
-;;;; t/zone-state-test.lisp
-;;;;
-;;;; Projecting an instant into local wall-clock components and zone state
-;;;; (ZONE-STATE-FOR-INSTANT, LOCAL-DATE-OF-INSTANT, LOCAL-TIME-OF-INSTANT),
-;;;; plus the internal lookup-reuse optimizations around
-;;;; RESOLVE-LOCAL-DATE-TIME. These tests read the real IANA time zone
-;;;; database from TZDIR or /usr/share/zoneinfo.
 (in-package #:cl-date-kit/test)
 
 (progn

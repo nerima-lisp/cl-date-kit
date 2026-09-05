@@ -1,8 +1,3 @@
-;;;; t/zone-test.lisp
-;;;;
-;;;; ZONE-OFFSET value-type tests: construction, fixed-offset LOCAL-DATE-TIME
-;;;; conversions, and comparison operators. No dependency on the real IANA
-;;;; time zone database.
 (in-package #:cl-date-kit/test)
 
 (describe
@@ -117,4 +112,3 @@
       (expect (zone-offset<= west west) :to-be-truthy)
       (expect (zone-offset> east west) :to-be-truthy)
       (expect (zone-offset>= east east) :to-be-truthy))))
-

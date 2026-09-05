@@ -1,11 +1,3 @@
-;;;; t/zone-database-test.lisp
-;;;;
-;;;; Time zone database metadata: available zone names and
-;;;; TIME-ZONE-DATABASE-VERSION, including the temporary-TZDIR helpers used
-;;;; only by the version-detection tests. These tests read the real IANA
-;;;; time zone database from TZDIR or /usr/share/zoneinfo. flake.nix points
-;;;; TZDIR at nixpkgs' `tzdata` package so `nix flake check` does not depend
-;;;; on the host's copy.
 (in-package #:cl-date-kit/test)
 
 (describe

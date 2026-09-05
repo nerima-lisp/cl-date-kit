@@ -1,8 +1,3 @@
-;;;; t/posix-tz-test.lisp
-;;;;
-;;;; Low-level TZif binary block/file parsing and validation, and POSIX-TZ
-;;;; footer string parsing/projection. These tests operate on synthetic
-;;;; byte blocks and POSIX-TZ strings, not the real IANA time zone database.
 (in-package #:cl-date-kit/test)
 
 (progn

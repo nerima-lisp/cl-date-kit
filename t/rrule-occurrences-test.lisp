@@ -1,5 +1,3 @@
-;;;; t/rrule-occurrences-test.lisp -- RRULE occurrence expansion: frequency cadence, BY* part
-;;;; filtering, COUNT-only limits, BYWEEKNO, and time filters.
 (in-package #:cl-date-kit/test)
 
 (describe

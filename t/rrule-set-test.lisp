@@ -1,4 +1,3 @@
-;;;; t/rrule-set-test.lisp
 (in-package #:cl-date-kit/test)
 
 (describe

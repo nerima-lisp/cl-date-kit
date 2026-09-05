@@ -1,5 +1,3 @@
-;;;; t/zoned-date-time-test.lisp
-;;;; ZonedDateTime construction, DST gap/overlap resolution, accessors, and field/zone withers.
 (in-package #:cl-date-kit/test)
 
 (defvar *new-york* nil)

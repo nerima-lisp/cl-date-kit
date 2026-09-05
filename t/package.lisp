@@ -1,5 +1,3 @@
-;;;; t/package.lisp
-;;;; t/package.lisp
 (defpackage #:cl-date-kit/test
   (:use #:cl #:cl-date-kit)
   ;; DESCRIBE clashes with CL:DESCRIBE; nothing else needs shadowing.
@@ -10,7 +8,6 @@
   (:import-from #:cl-date-kit #:with-clock)
   (:export #:run-tests))
 
-;;;; t/package.lisp
 (in-package #:cl-date-kit/test)
 
 (defun run-tests ()
@@ -19,5 +16,3 @@
     (error "cl-date-kit test suite failed"))
   (format t "~&cl-date-kit/test: successful completion with 0 failures~%")
   t)
-
-;;;; t/package.lisp

@@ -1,4 +1,3 @@
-;;;; t/period-test.lisp
 (in-package #:cl-date-kit/test)
 
 (progn

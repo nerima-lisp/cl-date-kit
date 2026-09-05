@@ -1,5 +1,3 @@
-;;;; t/zoned-date-time-arithmetic-test.lisp
-;;;; ZonedDateTime plus/minus arithmetic, truncation/rounding, comparisons, and absolute-field round-trips.
 (in-package #:cl-date-kit/test)
 
 (describe "ZonedDateTime fixed-unit arithmetic"

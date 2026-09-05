@@ -1,4 +1,3 @@
-;;;; t/local-time-test.lisp
 (in-package #:cl-date-kit/test)
 
 (describe

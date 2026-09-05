@@ -1,4 +1,3 @@
-;;;; t/local-date-test.lisp
 (in-package #:cl-date-kit/test)
 
 (describe
@@ -179,7 +178,7 @@
         (local-date-plus-days (make-local-date 2024 1 1) 14))
       :to-be-truthy))
   (it
-    "LOCAL-DATE-PLUS-MONTHS clamps to the shorter target month, like java.time"
+    "LOCAL-DATE-PLUS-MONTHS clamps to the shorter target month"
     (expect
       (local-date=
         (local-date-plus-months (make-local-date 2023 1 31) 1)
@@ -371,7 +370,7 @@
 
 (progn
   (describe
-    "LocalDate TemporalAdjusters"
+    "Local-date adjustment helpers"
     (it
       "returns first days of the next month and year"
       (expect

@@ -1,5 +1,3 @@
-;;;; t/rrule-schedule-test.lisp -- DTSTART type variants (DATE, floating DATE-TIME, and
-;;;; default-date skipping) and RRULE evaluation boundaries (DST, period limits, callbacks).
 (in-package #:cl-date-kit/test)
 
 (describe

@@ -1,10 +1,4 @@
-;;;; t/iso8601-test.lisp
 (in-package #:cl-date-kit/test)
-
-;;; Naive (zone-less) ISO 8601 types: LocalDate (calendar, ordinal, and week-date
-;;; forms), YearMonth/MonthDay/Year, LocalTime, LocalDateTime, Instant, and
-;;; LocalDateInterval. See iso8601-offset-test.lisp for offset/zone-aware types
-;;; and Duration/Period amounts.
 
 (describe
   "LocalDate"

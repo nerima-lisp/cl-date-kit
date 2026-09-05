@@ -1,10 +1,3 @@
-;;;; t/zone-transition-test.lisp
-;;;;
-;;;; Named-zone offset lookups, DST spring-forward-gap and fall-back-overlap
-;;;; resolution, and transition navigation (LOCAL-DATE-TIME-ZONE-TRANSITION,
-;;;; NEXT-ZONE-TRANSITION, PREVIOUS-ZONE-TRANSITION,
-;;;; TIME-ZONE-TRANSITIONS-BETWEEN). These tests read the real IANA time
-;;;; zone database from TZDIR or /usr/share/zoneinfo.
 (in-package #:cl-date-kit/test)
 
 (defvar *new-york* nil)

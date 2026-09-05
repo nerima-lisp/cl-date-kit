@@ -1,5 +1,3 @@
-;;;; t/rrule-test.lisp -- shared RRULE test helpers and RFC 5545 RRULE codec (parse/format,
-;;;; validation) tests.
 (in-package #:cl-date-kit/test)
 
 (defun rrule-test-local (year month day &optional (hour 9) (minute 0) (second 0))
@@ -143,4 +141,3 @@
                 (find-time-zone "America/New_York"))
               (parse-rrule "FREQ=DAILY;UNTIL=20240131T090000")))
           :to-be-truthy))))
-
