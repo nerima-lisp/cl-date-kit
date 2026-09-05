@@ -1,5 +1,5 @@
 site_name: cl-date-kit
-site_description: Dependency-free, SBCL-only date/time library with IANA time zone support, inspired by java.time, chrono, and Temporal
+site_description: Dependency-free, SBCL-only date/time library with IANA time zone support
 site_url: https://nerima-lisp.github.io/cl-date-kit/
 repo_url: https://github.com/nerima-lisp/cl-date-kit
 repo_name: nerima-lisp/cl-date-kit

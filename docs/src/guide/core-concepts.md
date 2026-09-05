@@ -2,8 +2,8 @@
 
 ## Naive vs. zone-aware values
 
-Like every reference library this is modeled on, cl-date-kit separates
-values that carry no time zone ("naive" or "local") from ones that do:
+cl-date-kit separates values that carry no time zone ("naive" or "local")
+from ones that do:
 
 | Naive | Zone-aware |
 |---|---|

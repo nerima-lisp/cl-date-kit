@@ -6,9 +6,8 @@ Common Lisp has no standard date/time library beyond `get-universal-time`
 and `decode-universal-time`, which cover neither time zones nor sub-second
 precision. This project follows [nerima-lisp's coding
 standard](https://github.com/nerima-lisp/.github/blob/main/CODING_STANDARD.md):
-target SBCL only, and spend the effort a general-purpose date library would
-spend on portability on getting the genuinely hard parts -- the IANA time
-zone database and daylight-saving disambiguation -- right instead.
+target SBCL only, and use the effort saved from portability for the IANA time
+zone database and daylight-saving disambiguation.
 
 ## Layers
 
@@ -24,25 +23,22 @@ arithmetic, and conditions. It has no type of its own, so it isn't numbered
 as a layer, but every layer below depends on it having loaded first.
 
 1. **Duration** (`src/duration.lisp`) -- an exact elapsed time (seconds +
-   nanoseconds). java.time's `Duration`, Rust's `Duration`, Go's
-   `time.Duration`.
+   nanoseconds).
 2. **Period** (`src/period.lisp`) -- a calendar-based years/months/days
-   delta. java.time's `Period`.
+   delta.
 3. **LocalDate / Month / YearMonth / MonthDay / Year / LocalTime / LocalDateTime** (`src/local-date.lisp`,
    `src/local-date-arithmetic.lisp`, `src/local-date-week.lisp`,
    `src/month.lisp`, `src/year-month.lisp`, `src/month-day.lisp`, `src/year.lisp`, `src/local-time.lisp`, `src/local-date-time.lisp`) --
    calendar date, ISO month, month-granularity, annual month/day, calendar year, wall-clock time, and their combinations,
-   with no time zone attached. java.time's
-   `LocalDate`/`LocalTime`/`LocalDateTime`, Temporal's `PlainDate`/`PlainTime`/
-   `PlainDateTime`.
+   with no time zone attached.
 4. **Instant** (`src/instant.lisp`) -- an absolute point on the UTC
-   timeline. java.time's `Instant`.
+   timeline.
 5. **Interval** (`src/interval.lisp`) -- a half-open `[start, end)` range of
    absolute `Instant` values, with overlap, intersection, span, and gap
    operations.
 6. **Clock** (`src/clock.lisp`) -- a boundary protocol for where "now" comes
-   from, so tests can inject a fixed instant. java.time's `Clock`.
-7. **TZif** (`src/tzif.lisp`) -- a from-scratch reader for the IANA time
+   from, so tests can inject a fixed instant.
+7. **TZif** (`src/tzif.lisp`) -- a reader for the IANA time
    zone database's on-disk binary format (RFC 8536).
 8. **Zone** (`src/zone.lisp`, `src/zone-version.lisp`, `src/zone-local.lisp`)
    -- `ZONE-OFFSET` (a fixed UTC offset) and `TIME-ZONE` (an IANA zone backed

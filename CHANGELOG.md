@@ -5,11 +5,9 @@ All notable changes to cl-date-kit are documented here. Format loosely follows
 
 ## [1.0.0]
 
-First stable release. This version consolidates a 2026 modernization pass across the
-whole codebase; the public API (every exported symbol's name, signature, and
-behavior) is unchanged from 0.3.0 -- every existing test continued to pass, unmodified
-in intent, through each step below. The version is bumped to 1.0.0 to mark the
-codebase as production-ready, not because of an incompatible API change.
+First stable release. The public API (every exported symbol's name, signature, and
+behavior) is unchanged from 0.3.0. The version is bumped to 1.0.0 to mark the stable
+release, not because of an incompatible API change.
 
 ### Fixed
 

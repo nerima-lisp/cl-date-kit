@@ -4,13 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-MkDocs%20Material-0a7a5a)](https://nerima-lisp.github.io/cl-date-kit/)
 
-A dependency-free, SBCL-only date and time library. It builds the calendar
-and clock shapes found in modern languages -- java.time's LocalDate/
-LocalTime/LocalDateTime/Instant/Interval/Duration/Period/ZoneOffset/ZonedDateTime,
-Rust's `time`/`chrono` split between naive and zone-aware values, JS
-Temporal's disambiguation of daylight-saving gaps and overlaps, and Go
-`time`'s simplicity -- on top of a from-scratch reader for the IANA time
-zone database's on-disk TZif format (RFC 8536). Time zone data is read from
+A dependency-free, SBCL-only date and time library with calendar and clock
+types, daylight-saving gap and overlap handling, and a reader for the IANA
+time zone database's on-disk TZif format (RFC 8536). Time zone data is read from
 the `TZDIR` environment variable or `/usr/share/zoneinfo` at runtime rather
 than bundled, so the library adds no ASDF dependency.
 
@@ -38,7 +34,7 @@ gaps and overlaps have to be resolved explicitly:
 ;; => "2024-03-10T03:30:00-04:00[America/New_York]"
 ;; 02:30 never happened that day (the spring-forward gap); the default
 ;; :COMPATIBLE disambiguation shifts it forward by the gap's length, landing
-;; on the first valid post-gap (EDT) reading, as java.time's default does.
+;; on the first valid post-gap (EDT) reading.
 ```
 
 An overlapping local time resolves the other way: pass `:preferred-offset` to

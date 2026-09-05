@@ -12,14 +12,14 @@ formats without naming each specific condition.
 | `INVALID-YEAR-MONTH` | `MAKE-YEAR-MONTH` | The month is outside 1-12 or either field is not an integer. |
 | `INVALID-MONTH-DAY` | `MAKE-MONTH-DAY` | The month/day pair cannot occur in a leap year. |
 | `INVALID-YEAR` | `MAKE-YEAR` | The proleptic-Gregorian year is not an integer. |
-| `INVALID-TIME` | `MAKE-LOCAL-TIME` | Hour, minute, second, or nanosecond is out of range. Leap seconds are not modeled, matching java.time, Temporal, Go `time`, and Rust's `time`/`chrono`. |
+| `INVALID-TIME` | `MAKE-LOCAL-TIME` | Hour, minute, second, or nanosecond is out of range. Leap seconds are not modeled. |
 | `DATE-TIME-PARSE-ERROR` | Every `PARSE-*` function | The input string does not match the expected ISO-8601/RFC-3339 grammar. |
 | `TIME-ZONE-NOT-FOUND` | `FIND-TIME-ZONE` | No TZif file for that IANA name under `TZDIR` or `/usr/share/zoneinfo` -- including when the name is rejected outright for containing `..` or starting with `/`, which would otherwise let a caller read arbitrary files off disk. |
 | `MALFORMED-TZIF` | The TZif parser | A file exists at the expected path but its header or data blocks are not RFC 8536-shaped. |
 | `NONEXISTENT-LOCAL-TIME` | `RESOLVE-LOCAL-DATE-TIME` with `:DISAMBIGUATION :STRICT` | The local date-time falls in a spring-forward gap: the wall clock jumped past it. |
 | `AMBIGUOUS-LOCAL-TIME` | `RESOLVE-LOCAL-DATE-TIME` with `:DISAMBIGUATION :STRICT` | The local date-time falls in a fall-back overlap: the wall clock repeated it under two different offsets. |
 | `INVALID-ZONED-DATE-TIME-OFFSET` | `ZONED-DATE-TIME-OF-STRICT` | The supplied offset is not a valid resolution of the local date-time in the zone, including gaps and invalid overlap offsets. |
-| `INVALID-ZONE-OFFSET` | `ZONE-OFFSET-OF-HMS` | Hours, minutes, or seconds are out of range, have mixed signs, or the magnitude exceeds the ISO-8601 limit of +-18:00 (java.time's `ZoneOffset.MIN`/`MAX`) -- including +-18:00 itself with a nonzero minute or second. |
+| `INVALID-ZONE-OFFSET` | `ZONE-OFFSET-OF-HMS` | Hours, minutes, or seconds are out of range, have mixed signs, or the magnitude exceeds the ISO-8601 limit of +-18:00 -- including +-18:00 itself with a nonzero minute or second. |
 | `INVALID-DURATION-DIVISION` | `DURATION-DIVIDED-BY` | The divisor is zero. `INVALID-DURATION-DIVISION-DURATION` and `INVALID-DURATION-DIVISION-DIVISOR` retain the rejected operands. |
 | `INSTANT-PRECISION-LOSS` | `INSTANT-TO-UNIVERSAL-TIME` | The requested conversion would discard nonzero precision. `INSTANT-PRECISION-LOSS-INSTANT` is the rejected value; `INSTANT-PRECISION-LOSS-REPRESENTATION` identifies the target representation. |
 | `INVALID-RRULE` | RRULE parsing, construction, recurrence scheduling, and set validation | An RFC 5545 rule is syntactically or semantically invalid. `INVALID-RRULE-REASON` identifies the violated rule; `INVALID-RRULE-VALUE` contains the offending input when available. |
@@ -44,8 +44,7 @@ of the two bracketing offsets to pair with the *original* local date-time
 as-is. `ZONED-DATE-TIME-OF-LOCAL` owns a full date-time, so for a gap under
 `:COMPATIBLE`/`:LATER` it additionally shifts the local fields forward by
 the gap's length, and under `:EARLIER` shifts them backward -- landing on
-the first real wall-clock reading in the new offset, exactly like
-java.time's default resolver:
+the first real wall-clock reading in the new offset:
 
 ```lisp
 (zoned-date-time-of-local (local-date-time-of 2024 3 10 2 30 0) ny)

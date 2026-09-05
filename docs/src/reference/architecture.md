@@ -3,18 +3,15 @@
 ## Date math: Howard Hinnant's days_from_civil / civil_from_days
 
 `LOCAL-DATE` converts between (year, month, day) and an epoch-day count
-using the algorithm from Howard Hinnant's "chrono-Compatible Low-Level Date
-Algorithms" -- the same one behind libc++'s `<chrono>`, Rust's `time` crate,
-and Abseil's `civil_time`. It is correct across the entire proleptic
+using Howard Hinnant's "chrono-Compatible Low-Level Date Algorithms". It is
+correct across the entire proleptic
 Gregorian calendar, not just the range the host Lisp's `universal-time`
 happens to support, and every other date operation (`PLUS-DAYS`, ordering,
 `DAY-OF-WEEK`) is defined in terms of it rather than reimplementing calendar
 arithmetic separately.
 
-Epoch day 0 is 1970-01-01, matching `INSTANT`'s Unix epoch -- deliberately
-not CL's native 1900-01-01 `universal-time` epoch, so every `EPOCH-SECOND`
-and `EPOCH-DAY` in this library lines up directly with every other modern
-language's timestamps.
+Epoch day 0 is 1970-01-01, matching `INSTANT`'s Unix epoch rather than CL's
+native 1900-01-01 `universal-time` epoch.
 
 ## The TZif reader
 
@@ -22,8 +19,7 @@ language's timestamps.
 8536) directly from bytes: the v1 32-bit-transition block, the v2/v3 header
 and 64-bit-transition block that supersedes it when present, and the
 POSIX-TZ string footer. Reading the compiled `zoneinfo` files that are
-already on disk -- rather than embedding a parsed copy of the database, as
-Go's `time/tzdata` or Noda Time do -- is what keeps `cl-date-kit`
+already on disk is what keeps `cl-date-kit`
 dependency-free: see [Compatibility](compatibility.md) for the trade-off
 that comes with it.
 
@@ -65,19 +61,15 @@ offset *before* it and under the offset *after* it:
   check above has already ruled out the only cases where it could land on
   an inconsistent answer.
 
-This mirrors the approach used internally by java.time's `ZoneRules` and
-similar logic in chrono-tz, applied here against TZif's transition table
-directly rather than against a higher-level rule object.
+This applies the classification directly against TZif's transition table
+rather than against a higher-level rule object.
 
 ## Continuation-passing style, used where it separates generation from selection
 
-This library reaches for an explicit visitor/continuation argument -- a
-function the callee invokes instead of allocating and returning a
-collection -- in two situations, and stays with ordinary return values and
-`MULTIPLE-VALUE-BIND` everywhere else. Forcing every function into
-continuation-passing style would fight the "human readable" goal as much as
-it would serve it; CPS earns its place only where it removes real
-complexity.
+This library uses an explicit visitor/continuation argument -- a function the
+callee invokes instead of allocating and returning a collection -- in two
+situations, and stays with ordinary return values and `MULTIPLE-VALUE-BIND`
+everywhere else. CPS is used only where it removes real complexity.
 
 **Streaming iteration over an unbounded or expensive-to-materialize
 sequence.** `MAP-RRULE-OCCURRENCES`, `MAP-RRULE-SET-OCCURRENCES`, and
