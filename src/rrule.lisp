@@ -1,6 +1,3 @@
-;;;; src/rrule.lisp
-;;;;
-;;;; Immutable representation of an RFC 5545 recurrence rule.
 (in-package #:cl-date-kit)
 
 (defparameter +rrule-frequencies+ '(:secondly :minutely :hourly :daily :weekly :monthly :yearly))

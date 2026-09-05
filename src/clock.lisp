@@ -1,12 +1,3 @@
-;;;; src/clock.lisp
-;;;;
-;;;; CLOCK is a boundary protocol for where "now" comes from: java.time's
-;;;; Clock, the fake-clock convention used for testing in Go and elsewhere.
-;;;; It is the one place in CL-DATE-KIT that dispatches with DEFGENERIC --
-;;;; every other type in this library is a plain DEFSTRUCT with named
-;;;; functions, matching how the rest of nerima-lisp is written, but swapping
-;;;; the source of "now" for a fixed value in tests is exactly the kind of
-;;;; boundary CL-BOUNDARY-KIT's protocols exist for.
 (in-package #:cl-date-kit)
 
 (defgeneric clock-now (clock)

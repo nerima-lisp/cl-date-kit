@@ -1,10 +1,3 @@
-;;;; src/rrule-occurrences.lisp
-;;;;
-;;;; RFC 5545 recurrence evaluation: the stateful next-occurrence source
-;;;; shared by DATE, floating DATE-TIME, and zone-aware DATE-TIME DTSTART
-;;;; values, and the public MAP-RRULE-OCCURRENCES / RRULE-OCCURRENCES /
-;;;; DO-RRULE-OCCURRENCES API built on top of it. RRULE-CANDIDATES.LISP
-;;;; supplies each period's raw candidates.
 (in-package #:cl-date-kit)
 
 (defun %rrule-anchor-at (start rule period-index)

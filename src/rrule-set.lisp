@@ -1,6 +1,3 @@
-;;;; src/rrule-set.lisp
-;;;;
-;;;; RFC 5545 recurrence-set composition over evaluated RRULE schedules.
 (in-package #:cl-date-kit)
 
 (defstruct (rrule-set

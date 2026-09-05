@@ -1,10 +1,3 @@
-;;;; src/rrule-candidates.lisp
-;;;;
-;;;; RFC 5545 recurrence candidate generation: turning one frequency period's
-;;;; anchor into its ordered raw DATE or local DATE-TIME candidates, including
-;;;; BYSETPOS positional selection. RRULE-OCCURRENCES.LISP turns these
-;;;; candidates into a bounded occurrence stream; RRULE-DATE-SELECTION.LISP
-;;;; owns the BYxxx day-selector matching this file calls into.
 (in-package #:cl-date-kit)
 
 (defun %rrule-set-position-bitmaps (positions)

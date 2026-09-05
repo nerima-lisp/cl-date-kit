@@ -1,13 +1,3 @@
-;;;; src/package.lisp
-;;;;
-;;;; The single public package. Layers build on each other in the order they
-;;;; are listed below (and loaded, per cl-date-kit.asd's :serial t): DURATION
-;;;; and PERIOD are the two delta types; LOCAL-DATE, LOCAL-TIME, and
-;;;; LOCAL-DATE-TIME are timezone-unaware "naive" values; INSTANT is an
-;;;; absolute point on the UTC timeline; CLOCK abstracts where "now" comes
-;;;; from; TZIF and ZONE add IANA time zone rules; ZONED-DATE-TIME combines a
-;;;; naive local date-time with a resolved zone offset; OFFSET-DATE-TIME uses
-;;;; a fixed offset; ISO8601 formats and parses all of the above.
 (defpackage #:cl-date-kit
   (:use #:cl)
   (:export

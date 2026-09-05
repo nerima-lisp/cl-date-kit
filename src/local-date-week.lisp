@@ -1,9 +1,3 @@
-;;;; src/local-date-week.lisp
-;;;;
-;;;; ISO 8601 week-based-year fields and weekday-relative adjusters for
-;;;; LOCAL-DATE: DAY-OF-WEEK conversions, week-of-week-based-year
-;;;; computation, and TemporalAdjuster-style helpers (next/previous matching
-;;;; weekday, the Nth weekday in a month, and similar).
 (in-package #:cl-date-kit)
 
 (defparameter *day-of-week-names* #(:thursday :friday :saturday :sunday :monday :tuesday :wednesday))

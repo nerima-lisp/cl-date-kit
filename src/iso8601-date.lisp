@@ -1,6 +1,5 @@
 (in-package #:cl-date-kit)
 
-;;; Shared parsing support ---------------------------------------------------
 (defun %parse-fixed-integer (string start end expected)
   (unless (and
       (<= 0 start end (length string))
@@ -52,7 +51,6 @@
       (error ()
         (error 'date-time-parse-error :string ,string :expected ,expected)))))
 
-;;; LocalDate ---------------------------------------------------------------
 (progn
   (defun %write-iso-year (year stream)
     (cond
@@ -286,4 +284,3 @@
       (error 'date-time-parse-error :string string :expected "YYYY-Www-D"))
     (if (%signed-extended-week-date-p string) (%parse-signed-extended-week-date string (function identity))
       (%parse-local-date-week-date string nil (function identity)))))
-

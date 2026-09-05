@@ -1,8 +1,3 @@
-;;;; src/zone-version.lisp
-;;;;
-;;;; Parsing and comparing IANA tzdata release version strings, read from a
-;;;; zoneinfo directory's +VERSION or tzdata.zi file. ZONE.LISP owns zoneinfo
-;;;; directory discovery; this file only interprets what it finds there.
 (in-package #:cl-date-kit)
 
 (progn

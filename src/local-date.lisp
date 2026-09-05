@@ -1,14 +1,3 @@
-;;;; src/local-date.lisp
-;;;;
-;;;; LOCAL-DATE is a proleptic-Gregorian calendar date with no time-of-day or
-;;;; zone: java.time's LocalDate, Temporal's PlainDate, chrono's NaiveDate.
-;;;;
-;;;; Date <-> day-count conversion uses Howard Hinnant's days_from_civil /
-;;;; civil_from_days ("chrono-Compatible Low-Level Date Algorithms"), the same
-;;;; algorithm behind libc++'s <chrono>, Rust's `time` crate, and Abseil's
-;;;; civil_time -- correct for the entire proleptic Gregorian calendar, not
-;;;; just the range the host Lisp's universal-time happens to support. Day 0
-;;;; is 1970-01-01, matching INSTANT's Unix epoch.
 (in-package #:cl-date-kit)
 
 (defstruct (local-date (:constructor %make-local-date (year month day))) (year 0 :type integer :read-only t)
@@ -173,4 +162,3 @@ A compatible resolution shifts a nonexistent midnight forward across a gap."
 
 (defun local-date>= (a b)
   (not (minusp (local-date-compare a b))))
-

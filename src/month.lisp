@@ -1,4 +1,3 @@
-;;;; src/month.lisp
 (in-package #:cl-date-kit)
 
 (defparameter *iso-month-names* #(:january

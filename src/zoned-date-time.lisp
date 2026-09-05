@@ -1,10 +1,3 @@
-;;;; src/zoned-date-time.lisp
-;;;;
-;;;; ZONED-DATE-TIME pairs a LOCAL-DATE-TIME with a ZONE (fixed offset or
-;;;; IANA time zone) and the ZONE-OFFSET that local date-time resolved to:
-;;;; java.time's ZonedDateTime, Temporal's ZonedDateTime, the type behind
-;;;; chrono-tz's DateTime<Tz>. This is the "real-world timestamp" type; the
-;;;; others in this library are its building blocks.
 (in-package #:cl-date-kit)
 
 (defstruct (zoned-date-time (:constructor %make-zoned-date-time (local zone offset))) (local nil :type local-date-time :read-only t)

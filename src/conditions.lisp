@@ -1,12 +1,9 @@
-;;;; src/conditions.lisp
 (in-package #:cl-date-kit)
 
 (define-condition cl-date-kit-error (error)
   ()
   (:documentation
-    "Base condition for domain validation errors signaled by CL-DATE-KIT. Catch
-this to handle invalid temporal values and format violations without naming
-each specific condition."))
+    "Base condition for domain validation errors signaled by CL-DATE-KIT."))
 
 (define-date-kit-condition invalid-date (year month day)
   "~D-~D-~D is not a valid proleptic-Gregorian date."
@@ -41,8 +38,7 @@ a real month/day combination in a leap year.  February 29 is therefore valid.")
   "~D:~D:~D.~9,'0D is not a valid time of day."
   "Signaled by MAKE-LOCAL-TIME when hour, minute, second, or
 nanosecond falls outside its valid range (0-23, 0-59, 0-59, 0-999999999).
-Leap seconds are not modeled, matching java.time, Temporal, Go time, and
-Rust's time/chrono.")
+Leap seconds are not modeled.")
 
 (define-date-kit-condition date-time-parse-error (string expected)
   "Cannot parse ~S as ~A."
@@ -101,4 +97,3 @@ offsets.")
 (define-date-kit-condition invalid-rrule (reason value)
   "Invalid RFC 5545 recurrence rule: ~A~@[ (~S)~]."
   "Signaled when an RRULE or recurrence-set value is invalid.")
-

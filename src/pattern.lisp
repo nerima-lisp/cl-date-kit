@@ -1,7 +1,3 @@
-;;;; src/pattern.lisp
-;;;;
-;;;; A deliberately small, locale-independent pattern formatter. A formatter
-;;;; is compiled once, then can be reused without re-scanning its pattern.
 (in-package #:cl-date-kit)
 
 (defstruct (date-time-formatter

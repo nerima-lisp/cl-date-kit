@@ -1,8 +1,3 @@
-;;;; src/month-day.lisp
-;;;;
-;;;; MONTH-DAY is a month and day without a year.  It models annual calendar
-;;;; events such as birthdays and renewal dates, including February 29.
-
 (in-package #:cl-date-kit)
 
 (defstruct (month-day (:constructor %make-month-day (month day)))

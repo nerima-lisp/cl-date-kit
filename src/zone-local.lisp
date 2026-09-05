@@ -1,6 +1,3 @@
-;;;; src/zone-local.lisp
-;;;;
-;;;; Wall-time resolution for named IANA zones and fixed offsets.
 (in-package #:cl-date-kit)
 
 (defun %tzif-maximum-absolute-offset-seconds (data)

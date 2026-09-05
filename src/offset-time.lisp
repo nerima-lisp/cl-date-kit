@@ -1,7 +1,3 @@
-;;;; src/offset-time.lisp
-;;;;
-;;;; OFFSET-TIME pairs a LOCAL-TIME with a fixed UTC offset.  It intentionally
-;;;; has no date, so it cannot identify an INSTANT by itself.
 (in-package #:cl-date-kit)
 
 (defstruct (offset-time (:constructor %make-offset-time (local-time offset))) (local-time nil :type local-time :read-only t)

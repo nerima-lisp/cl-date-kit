@@ -1,9 +1,3 @@
-;;;; src/local-date-arithmetic.lisp
-;;;;
-;;;; Calendar arithmetic for LOCAL-DATE: adding and subtracting fixed and
-;;;; calendar-relative units (days, weeks, months, years, PERIODs), computing
-;;;; the PERIOD between two dates, the field-with-X "wither" setters, and the
-;;;; first/last day of the current month or year.
 (in-package #:cl-date-kit)
 
 (defun local-date-plus-days (date n)
@@ -17,8 +11,7 @@
 
 (defun local-date-plus-months (date n)
   "Adds N months. When the target month is shorter than DATE's day-of-month,
-the result clamps to the last day of the target month -- java.time's
-plusMonths behavior (2023-01-31 plus 1 month is 2023-02-28, not an error)."
+the result clamps to the last day of the target month."
   (multiple-value-bind (extra-years month0) (floor (+ (1- (local-date-month date)) n) 12)
     (let ((year (+ (local-date-year date) extra-years))
           (month (1+ month0)))
@@ -50,7 +43,7 @@ plusMonths behavior (2023-01-31 plus 1 month is 2023-02-28, not an error)."
 
 (defun local-date-until (start end)
   "The PERIOD from START to END, as whole years, then whole months, then
-remaining days -- a direct port of java.time's Period.between algorithm."
+remaining days."
   (let ((total-months
         (-
           (+ (* (local-date-year end) 12) (1- (local-date-month end)))

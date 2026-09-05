@@ -1,8 +1,3 @@
-;;;; src/local-time.lisp
-;;;;
-;;;; LOCAL-TIME is a wall-clock time of day with no date or zone: java.time's
-;;;; LocalTime, Temporal's PlainTime. Like all four reference libraries, leap
-;;;; seconds are not modeled -- SECOND always runs 0-59.
 (in-package #:cl-date-kit)
 
 (defconstant +seconds-per-day+ 86400)
@@ -94,8 +89,8 @@
   (make-offset-time local-time offset))
 
 (defun %local-time-plus-nanos-total (time delta-nanos)
-  "Adds DELTA-NANOS nanoseconds to TIME, wrapping around midnight (LocalTime
-arithmetic never carries into a date, matching java.time)."
+  "Adds DELTA-NANOS nanoseconds to TIME, wrapping around midnight (LOCAL-TIME
+arithmetic never carries into a date)."
   (let* ((total-nanos
         (+
           (* (local-time-to-second-of-day time) +nanos-per-second+)

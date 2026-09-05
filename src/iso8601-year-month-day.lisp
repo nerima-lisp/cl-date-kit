@@ -1,6 +1,5 @@
 (in-package #:cl-date-kit)
 
-;;; YearMonth ---------------------------------------------------------------
 (defun format-year-month (value)
   "Formats VALUE as the canonical ISO 8601 year-month form YYYY-MM."
   (format
@@ -52,7 +51,6 @@
       (t
         (error 'date-time-parse-error :string string :expected "ISO 8601 year-month")))))
 
-;;; MonthDay ----------------------------------------------------------------
 (defun format-month-day (value)
   "Formats VALUE as the canonical ISO 8601 month-day form --MM-DD."
   (format nil "--~2,'0D-~2,'0D" (month-day-month value) (month-day-day value)))
@@ -88,7 +86,6 @@
           (%parse-fixed-integer string 4 6 "ISO 8601 month-day")))
       (t (error 'date-time-parse-error :string string :expected "ISO 8601 month-day")))))
 
-;;; Year --------------------------------------------------------------------
 (defun format-year (value)
   "Formats VALUE as a four-digit or signed expanded ISO 8601 year."
   (let ((number (year-value value)))

@@ -1,6 +1,3 @@
-;;;; src/year.lisp
-;; A proleptic Gregorian calendar year with no month, day, time, or zone.
-
 (in-package #:cl-date-kit)
 
 (defstruct (year (:constructor %make-year (value)))

@@ -1,13 +1,5 @@
-;;;; src/zone.lisp
-;;;;
-;;;; Named IANA zone state, TZDB discovery, and transition navigation backed
-;;;; by TZIF.LISP's parsed rules. Fixed offsets live in ZONE-OFFSET.LISP,
-;;;; wall-time resolution lives in ZONE-LOCAL.LISP, POSIX TZ footer parsing
-;;;; and transition projection live in POSIX-TZ.LISP, and tzdata release
-;;;; version parsing lives in ZONE-VERSION.LISP.
 (in-package #:cl-date-kit)
 
-;;; --- Small helpers over TZIF.LISP's data -------------------------------
 (defun %tzif-type->offset (type)
   (or
     (tzif-type-offset-cache type)
@@ -31,7 +23,6 @@
           (setf hi (1- mid)))))
     result))
 
-;;; --- IANA time zones ----------------------------------------------------
 (defstruct (time-zone (:constructor %make-time-zone (name tzif-data posix-rule))) (name "" :type string :read-only t)
   (tzif-data nil :type tzif-data :read-only t)
   (posix-rule nil :type (or null posix-tz-rule) :read-only t)

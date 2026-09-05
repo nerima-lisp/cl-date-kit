@@ -1,6 +1,3 @@
-;;;; src/pattern-builder.lisp
-;;;;
-;;;; Assembles a fully-parsed pattern field alist into a concrete date-time value.
 (in-package #:cl-date-kit)
 
 (defun %pattern-value (field values)

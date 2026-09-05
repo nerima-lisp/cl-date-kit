@@ -1,7 +1,3 @@
-;;;; src/locale.lisp
-;;;;
-;;;; Pattern locale data is intentionally small and dependency-free. English and Japanese
-;;;; are bundled; callers can retain a custom locale object in a formatter.
 (in-package #:cl-date-kit)
 
 (defstruct (date-time-locale

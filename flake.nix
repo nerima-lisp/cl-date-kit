@@ -1,5 +1,5 @@
 {
-  description = "Dependency-free, SBCL-only date/time library with IANA time zone support, inspired by java.time, chrono, and Temporal";
+  description = "Dependency-free, SBCL-only date/time library with IANA time zone support";
 
   inputs = {
     # nixos-unstable, not nixpkgs-unstable: it advances only after the NixOS

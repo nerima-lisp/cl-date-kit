@@ -1,10 +1,5 @@
-;;;; src/iso8601-offset.lisp
-;;;;
-;;;; ISO-8601 formatting and parsing for offset- and zone-aware types:
-;;;; ZONE-OFFSET, OFFSET-DATE-TIME, OFFSET-TIME, ZONED-DATE-TIME.
 (in-package #:cl-date-kit)
 
-;;; --- ZoneOffset --------------------------------------------------------------
 (progn
   (defun %write-zone-offset (offset stream)
     (let ((total (zone-offset-total-seconds offset)))
@@ -138,7 +133,6 @@
         (parse-local-date-time (subseq string 0 offset-start))
         (parse-zone-offset string offset-start (length string))))))
 
-;;; --- Instant ---------------------------------------------------------------
 
 (defun format-instant (instant)
   "Formats INSTANT as the canonical ISO 8601 UTC form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]Z."
@@ -193,7 +187,6 @@
       (multiple-value-bind (local-date-time offset) (%parse-local-date-time-and-offset string)
         (local-date-time-to-instant local-date-time offset)))))
 
-;;; --- OffsetDateTime ---------------------------------------------------------
 (defun format-offset-date-time (offset-date-time)
   "Formats OFFSET-DATE-TIME as an ISO 8601 date-time with its numeric UTC offset."
   (with-output-to-string (stream)
@@ -207,7 +200,6 @@
   (multiple-value-bind (local-date-time offset) (%parse-local-date-time-and-offset string)
     (make-offset-date-time local-date-time offset)))
 
-;;; --- OffsetTime -------------------------------------------------------------
 (defun format-offset-time (offset-time)
   "Formats OFFSET-TIME as an ISO 8601 time with its numeric UTC offset."
   (with-output-to-string (stream)
@@ -245,7 +237,6 @@
       (parse-local-time (subseq string 0 offset-start))
       (parse-zone-offset string offset-start (length string)))))
 
-;;; --- ZonedDateTime -----------------------------------------------------------
 (defun format-zoned-date-time (zoned-date-time)
   "Formats ZONED-DATE-TIME as an ISO 8601 date-time with its offset and, for a named zone, a bracketed [Zone/Id] suffix."
   (concatenate
@@ -259,7 +250,6 @@
         "]")
       "")))
 
-;;; --- ZonedDateTime (continued) ------------------------------------------------
 (defun parse-zoned-date-time (string)
   "Parses an ISO 8601 local date-time with an explicit offset and optional zone.
 When a zone suffix is present, its rules must admit the explicit offset."

@@ -1,6 +1,3 @@
-;;;; src/rrule-codec.lisp
-;;;;
-;;;; RFC 5545 RRULE wire-format codec.  Evaluation deliberately lives elsewhere.
 (in-package #:cl-date-kit)
 
 (defun %rrule-split (string delimiter)

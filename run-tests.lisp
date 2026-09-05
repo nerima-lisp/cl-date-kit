@@ -1,5 +1,3 @@
-;;;; run-tests.lisp
-;;;;
 ;;;; Bootstrap script: register this checkout, inherit the caller's ASDF
 ;;;; configuration for dependencies, and run the test system.
 

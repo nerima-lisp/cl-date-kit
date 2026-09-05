@@ -1,8 +1,3 @@
-;;;; src/local-date-time.lisp
-;;;;
-;;;; LOCAL-DATE-TIME pairs a LOCAL-DATE with a LOCAL-TIME: java.time's
-;;;; LocalDateTime, Temporal's PlainDateTime. Still no zone -- arithmetic that
-;;;; crosses midnight carries into the date, unlike LOCAL-TIME alone.
 (in-package #:cl-date-kit)
 
 (defstruct (local-date-time (:constructor %make-local-date-time (date time))) (date nil :type local-date :read-only t)

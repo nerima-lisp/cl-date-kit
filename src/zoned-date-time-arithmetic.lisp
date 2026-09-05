@@ -1,10 +1,3 @@
-;;;; ZONED-DATE-TIME arithmetic, comparison, adjustment (truncation/rounding),
-;;;; and NOW constructors.
-;;;;
-;;;; The four -NOW constructors (ZONED-DATE-TIME-NOW, LOCAL-DATE-TIME-NOW,
-;;;; LOCAL-TIME-NOW, LOCAL-DATE-NOW) build OTHER types but live here because
-;;;; they depend on ZONE-OFFSET-UTC/CURRENT-CLOCK/ZONED-DATE-TIME-OF-INSTANT,
-;;;; which are only available this late in the load order.
 (in-package #:cl-date-kit)
 
 (defun zoned-date-time-plus-duration (zoned-date-time d)

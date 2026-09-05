@@ -1,7 +1,5 @@
-;;;; Fixed UTC-offset and time-zone transition value types.
 (in-package #:cl-date-kit)
 
-;;; --- Fixed offsets -----------------------------------------------------
 (defstruct (zone-offset (:constructor %make-zone-offset (total-seconds))) (total-seconds 0 :type integer :read-only t))
 
 (defstruct (zone-transition
@@ -59,4 +57,3 @@
       (t 0))))
 
 (define-ordering-operators zone-offset zone-offset-compare)
-

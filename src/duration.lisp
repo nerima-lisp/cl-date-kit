@@ -1,10 +1,3 @@
-;;;; src/duration.lisp
-;;;;
-;;;; DURATION is an exact elapsed time: java.time's Duration, Rust's
-;;;; std::time::Duration (but signed, like java.time), Go's time.Duration.
-;;;; Represented as SECONDS (any sign) plus NANOS, always normalized to
-;;;; [0, 999999999] and added to SECONDS -- the same split java.time uses, so
-;;;; that -0.5s reads as (SECONDS -1, NANOS 500000000).
 (in-package #:cl-date-kit)
 
 (defstruct (duration (:constructor %make-duration (seconds nanos))) (seconds 0 :type integer :read-only t)

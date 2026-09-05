@@ -1,12 +1,5 @@
-;;;; src/iso8601.lisp
-;;;;
-;;;; ISO-8601 / RFC-3339 formatting and parsing for every type in this
-;;;; library. Formatters emit canonical extended forms; parsers also accept
-;;;; ISO 8601 basic calendar, ordinal-date, and week-date forms where a date
-;;;; is syntactically permitted.
 (in-package #:cl-date-kit)
 
-;;; --- LocalTime -------------------------------------------------------------
 (progn
   (defun %write-local-time (time stream)
     (if (zerop (local-time-nanosecond time)) (format
@@ -83,7 +76,6 @@ optional fractional-second suffix."
               (%parse-fixed-integer string 7 length "HHMMSS.nnnnnnnnn")
               (expt 10 (- 16 length)))))))))
 
-;;; --- LocalDateTime ---------------------------------------------------------
 (progn
   (defun %write-local-date-time (date-time stream)
     (%write-local-date (local-date-time-date date-time) stream)

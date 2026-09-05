@@ -1,6 +1,3 @@
-;;;; src/iso8601-amounts.lisp
-;;;;
-;;;; ISO-8601 amount and interval formatting and parsing.
 (in-package #:cl-date-kit)
 
 (defun format-duration (duration)
@@ -142,7 +139,6 @@
         (multiple-value-bind (whole frac) (truncate signed-total)
           (duration-of-seconds whole (* frac +nanos-per-second+)))))))
 
-;;; --- Period ("PnYnMnD") -------------------------------------------------------
 (defun format-period (p)
   "Formats P as a canonical ISO 8601 period of the form PnYnMnD."
   (if (period-zero-p p) "P0D"

@@ -1,12 +1,3 @@
-;;;; src/tzif.lisp
-;;;;
-;;;; A from-scratch reader for the on-disk IANA time zone database format,
-;;;; TZif (RFC 8536) -- the same binary compiled-zoneinfo files every other
-;;;; language's tz support ultimately reads (glibc, Go's time/tzdata,
-;;;; Python's zoneinfo, chrono-tz's data generator). Keeping this a plain
-;;;; file reader rather than an ASDF dependency is what lets CL-DATE-KIT
-;;;; support real IANA zones while staying dependency-free: see zone.lisp for
-;;;; the TZDIR / /usr/share/zoneinfo search path that finds these files.
 (in-package #:cl-date-kit)
 
 (defstruct tzif-type (utc-offset 0 :type integer :read-only t)

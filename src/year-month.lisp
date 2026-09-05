@@ -1,9 +1,3 @@
-;;;; src/year-month.lisp
-;;;;
-;;;; YEAR-MONTH is a proleptic-Gregorian year and month without a day or
-;;;; time-of-day. It is suitable for billing periods, accounting buckets,
-;;;; and month-granularity validity windows.
-
 (in-package #:cl-date-kit)
 
 (defstruct (year-month (:constructor %make-year-month (year month)))

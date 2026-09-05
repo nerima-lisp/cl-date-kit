@@ -1,6 +1,3 @@
-;;;; src/pattern-parser.lisp
-;;;;
-;;;; Pattern parsing and temporal value reconstruction for DATE-TIME-FORMATTER.
 (in-package #:cl-date-kit)
 
 (defun %pattern-parse-error (string pattern)

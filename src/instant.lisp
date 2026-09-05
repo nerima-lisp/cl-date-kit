@@ -1,12 +1,3 @@
-;;;; src/instant.lisp
-;;;;
-;;;; INSTANT is an absolute point on the UTC timeline: java.time's Instant,
-;;;; Temporal's Instant, the value inside Go's time.Time and Rust's
-;;;; SystemTime. Represented as EPOCH-SECOND (signed, seconds since the Unix
-;;;; epoch 1970-01-01T00:00:00Z) plus NANOSECOND in [0, 999999999], the same
-;;;; split DURATION uses. Using the Unix epoch rather than CL's native
-;;;; 1900-01-01 universal-time epoch keeps every INSTANT-EPOCH-SECOND
-;;;; directly comparable with every other modern language's timestamps.
 (in-package #:cl-date-kit)
 
 (defstruct (instant (:constructor %make-instant (epoch-second nanosecond))) (epoch-second 0 :type integer :read-only t)

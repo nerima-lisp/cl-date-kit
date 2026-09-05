@@ -1,8 +1,3 @@
-;;;; src/offset-date-time.lisp
-;;;;
-;;;; OFFSET-DATE-TIME pairs a LOCAL-DATE-TIME with a fixed UTC offset.  Unlike
-;;;; ZONED-DATE-TIME it carries no IANA zone rules, making it the direct model
-;;;; for RFC 3339 timestamps and Java's OffsetDateTime.
 (in-package #:cl-date-kit)
 
 (defstruct (offset-date-time
