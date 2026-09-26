@@ -50,6 +50,11 @@ input string does not match the expected ISO-8601/RFC-3339 grammar.")
   "Signaled when a custom date-time pattern is invalid or
 requires a field that its input value does not provide.")
 
+(define-date-kit-condition invalid-date-time-profile (value)
+  "~S is not a supported date-time profile."
+  "Signaled when a date-time parse or format function receives a profile other
+than NIL or :RFC3339.")
+
 (define-date-kit-condition time-zone-not-found (name)
   "No time zone database entry for ~S. Searched TZDIR and /usr/share/zoneinfo."
   "Signaled by FIND-TIME-ZONE when no TZif file for the

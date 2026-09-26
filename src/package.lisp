@@ -757,6 +757,8 @@
    #:date-time-format-error
    #:date-time-format-error-pattern
    #:date-time-format-error-reason
+   #:invalid-date-time-profile
+   #:invalid-date-time-profile-value
    #:time-zone-not-found
    #:time-zone-not-found-name
    #:malformed-tzif

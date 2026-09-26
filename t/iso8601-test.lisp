@@ -255,6 +255,36 @@
 
 (describe
   "RFC3339/TOML date-time profile"
+  (it-property
+      "round-trips TOML local dates"
+      ((month (gen-integer :min 1 :max 12))
+       (day (gen-integer :min 1 :max 28)))
+    (let ((value (make-local-date 2024 month day)))
+      (expect
+        (local-date=
+          (parse-local-date (format-local-date value))
+          value)
+        :to-be-truthy)))
+  (it
+    "rejects the profile-only local date-time forms by default"
+    (signals date-time-parse-error (parse-local-date-time "2024-06-15 07:32:00"))
+    (signals date-time-parse-error (parse-local-date-time "2024-06-15T07:32")))
+  (it
+    "rejects omitted seconds by default"
+    (signals date-time-parse-error (parse-local-time "07:32")))
+  (it-each
+      (("07:32:00.1234567890") ("07:32:00.12345678901"))
+      "rejects over-precise default local time ~S"
+      (input)
+    (signals date-time-parse-error (parse-local-time input)))
+  (it-each
+      ((:bogus))
+      "rejects unsupported profiles ~S"
+      (profile)
+    (signals invalid-date-time-profile
+      (parse-local-time "07:32" :profile profile))
+    (signals invalid-date-time-profile
+      (format-local-time (make-local-time 7 32 0) :profile profile)))
   (it-each
       (("07:32" 7 32 0 0)
        ("07:32:00.123456789123" 7 32 0 123456789))
@@ -283,7 +313,14 @@
        ("2024-06-15T07:32:60Z"))
       "rejects invalid TOML date-time ~S"
       (string)
-    (signals date-time-parse-error (parse-instant string :profile :rfc3339)))
+      (signals date-time-parse-error (parse-instant string :profile :rfc3339)))
+  (it-each
+      (("2024_06-15T07:32") ("2024-06_15T07:32")
+       ("2024-06-15X07:32"))
+      "rejects malformed RFC3339 date separators in ~S"
+      (string)
+    (signals date-time-parse-error
+      (parse-local-date-time string :profile :rfc3339)))
   (it
     "formats a minimal preserving TOML fraction"
     (let ((value (local-date-time-of 2024 6 15 7 32 0 123000000)))
@@ -296,6 +333,19 @@
             :profile :rfc3339)
           value)
         :to-be-truthy)))
+  (it
+    "formats and parses a TOML offset date-time"
+    (let ((value (offset-date-time-of 2024 6 15 7 32 0 123000000
+                    (zone-offset-of-hours 9))))
+      (expect (format-offset-date-time value :profile :rfc3339)
+        :to-equal "2024-06-15T07:32:00.123+09:00")
+      (expect
+        (offset-date-time-compare
+          (parse-offset-date-time
+            (format-offset-date-time value :profile :rfc3339)
+            :profile :rfc3339)
+          value)
+        :to-be 0)))
   (it-property
       "round-trips TOML local times"
       ((hour (gen-integer :min 0 :max 23))
@@ -308,4 +358,45 @@
           (parse-local-time (format-local-time value :profile :rfc3339)
             :profile :rfc3339)
           value)
+        :to-be-truthy)))
+  (it-property
+      "round-trips TOML local date-times"
+      ((hour (gen-integer :min 0 :max 23))
+       (minute (gen-integer :min 0 :max 59))
+       (second (gen-integer :min 0 :max 59))
+       (nanosecond (gen-integer :min 0 :max 999999999)))
+    (let ((value (local-date-time-of 2024 6 15 hour minute second nanosecond)))
+      (expect
+        (local-date-time=
+          (parse-local-date-time (format-local-date-time value :profile :rfc3339)
+            :profile :rfc3339)
+          value)
+        :to-be-truthy)))
+  (it-property
+      "round-trips TOML instants"
+      ((seconds (gen-integer :min -1000000 :max 1000000))
+       (nanosecond (gen-integer :min 0 :max 999999999)))
+    (let ((value (instant-of-epoch-second seconds nanosecond)))
+      (expect
+        (instant=
+          (parse-instant (format-instant value :profile :rfc3339)
+            :profile :rfc3339)
+          value)
+        :to-be-truthy)))
+  (it-property
+      "round-trips TOML offset date-times"
+      ((hour (gen-integer :min 0 :max 23))
+       (minute (gen-integer :min 0 :max 59))
+       (second (gen-integer :min 0 :max 59))
+       (nanosecond (gen-integer :min 0 :max 999999999))
+       (offset-hour (gen-integer :min -12 :max 12)))
+    (let ((value (offset-date-time-of 2024 6 15 hour minute second nanosecond
+                    (zone-offset-of-hours offset-hour))))
+      (expect
+        (zerop
+          (offset-date-time-compare
+            (parse-offset-date-time
+              (format-offset-date-time value :profile :rfc3339)
+              :profile :rfc3339)
+            value))
         :to-be-truthy))))

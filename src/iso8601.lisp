@@ -1,5 +1,11 @@
 (in-package #:cl-date-kit)
 
+(defun %validate-date-time-profile (profile)
+  (cond
+    ((null profile) nil)
+    ((eq profile :rfc3339) profile)
+    (t (error 'invalid-date-time-profile :value profile))))
+
 (defun %parse-fraction-nanoseconds (string start end profile expected)
   (let ((digits (- end start)))
     (when (or (zerop digits) (and (null profile) (> digits 9)))
@@ -37,6 +43,17 @@
             0)))))
 
 (progn
+  (defun %write-fraction-nanoseconds (nanosecond stream minimal-p)
+    (let ((digits 9))
+      (when minimal-p
+        (loop while (zerop (mod nanosecond 10))
+              do (decf digits)
+                 (setf nanosecond (floor nanosecond 10))))
+      (write-char #\. stream)
+      (loop for divisor = (expt 10 (1- digits)) then (floor divisor 10)
+            repeat digits
+            do (write-char
+                 (digit-char (mod (floor nanosecond divisor) 10)) stream))))
   (defun %write-local-time (time stream &key minimal-fraction)
     (if (zerop (local-time-nanosecond time)) (format
         stream
@@ -44,20 +61,19 @@
         (local-time-hour time)
         (local-time-minute time)
         (local-time-second time))
-      (let* ((nanosecond (local-time-nanosecond time))
-             (fraction (if minimal-fraction
-                          (string-right-trim "0" (format nil "~9,'0D" nanosecond))
-                          (format nil "~9,'0D" nanosecond))))
-        (format stream "~2,'0D:~2,'0D:~2,'0D.~A"
+      (let ((nanosecond (local-time-nanosecond time)))
+        (format stream "~2,'0D:~2,'0D:~2,'0D"
           (local-time-hour time) (local-time-minute time)
-          (local-time-second time) fraction))))
+          (local-time-second time))
+        (%write-fraction-nanoseconds nanosecond stream minimal-fraction))))
   (defun format-local-time (time &key profile)
     "Formats TIME as ISO 8601, or as TOML/RFC3339 with PROFILE :RFC3339."
     (with-output-to-string (stream)
-      (%write-local-time time stream :minimal-fraction (eq profile :rfc3339)))))
+      (%write-local-time time stream
+        :minimal-fraction (eq (%validate-date-time-profile profile) :rfc3339)))))
 
 (defun %parse-local-time-profile (string profile)
-  (when profile
+  (when (eq profile :rfc3339)
     (return-from %parse-local-time-profile
       (%parse-toml-local-time string 0 (length string))))
   (with-date-time-parse-error
@@ -94,6 +110,7 @@
                 (%parse-fraction-nanoseconds string 7 length nil "fraction")))))))
 
 (defun parse-local-time (string &key profile)
+  (setf profile (%validate-date-time-profile profile))
   (with-date-time-parse-error
     (string "HH:MM[:SS][.fraction] or HHMM[SS][.fraction]")
     (%parse-local-time-profile string profile)))
@@ -101,35 +118,46 @@
 (progn
   (defun %write-local-date-time (date-time stream &key profile)
     (%write-local-date (local-date-time-date date-time) stream)
-    (write-char (if (eq profile :rfc3339) #\T #\T) stream)
+    (write-char #\T stream)
     (%write-local-time (local-date-time-time date-time)
       stream :minimal-fraction (eq profile :rfc3339)))
   (defun format-local-date-time (dt &key profile)
     "Formats DT as the canonical ISO 8601 form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]."
     (with-output-to-string (stream)
-      (%write-local-date-time dt stream :profile profile))))
+      (%write-local-date-time dt stream :profile (%validate-date-time-profile profile)))))
 
 (defun %parse-local-date-time-profile (string profile)
   "Parses an ISO 8601 date-time of the form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]."
   (with-date-time-parse-error
     (string "YYYY-MM-DDTHH:MM:SS")
-    (let ((sep (or (position #\T string)
-                   (position #\t string)
-                   (and profile (position #\Space string)))))
-      (unless sep
-        (error 'date-time-parse-error :string string :expected "YYYY-MM-DDTHH:MM:SS"))
+    (let* ((length (and (stringp string) (length string)))
+           (separator (and length
+                           (or (position #\T string)
+                               (position #\t string)))))
       (if profile
+          (progn
+            (unless (and length (>= length 12)
+                         (char= (char string 4) #\-)
+                         (char= (char string 7) #\-)
+                         (member (char string 10) '(#\T #\t #\Space)))
+              (error 'date-time-parse-error :string string
+                :expected "YYYY-MM-DDTHH:MM:SS"))
+            (make-local-date-time
+              (make-local-date
+                (%parse-fixed-integer string 0 4 "YYYY-MM-DD")
+                (%parse-fixed-integer string 5 7 "YYYY-MM-DD")
+                (%parse-fixed-integer string 8 10 "YYYY-MM-DD"))
+              (%parse-toml-local-time string 11 length)))
+        (progn
+          (unless separator
+            (error 'date-time-parse-error :string string
+              :expected "YYYY-MM-DDTHH:MM:SS"))
           (make-local-date-time
-            (make-local-date
-              (%parse-fixed-integer string 0 4 "YYYY-MM-DD")
-              (%parse-fixed-integer string 5 7 "YYYY-MM-DD")
-              (%parse-fixed-integer string 8 10 "YYYY-MM-DD"))
-            (%parse-toml-local-time string 11 (length string)))
-        (make-local-date-time
-          (parse-local-date (subseq string 0 sep))
-          (parse-local-time (subseq string (1+ sep))))))))
+            (parse-local-date (subseq string 0 separator))
+            (parse-local-time (subseq string (1+ separator)))))))))
 
 (defun parse-local-date-time (string &key profile)
+  (setf profile (%validate-date-time-profile profile))
   (with-date-time-parse-error
     (string "YYYY-MM-DDTHH:MM[:SS][.fraction]")
     (%parse-local-date-time-profile string profile)))
