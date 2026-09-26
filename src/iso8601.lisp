@@ -32,6 +32,9 @@
       (unless (and (char= (char string (+ start 2)) #\:)
                    (or (not has-seconds) (char= (char string (+ start 5)) #\:)))
         (error 'date-time-parse-error :string string :expected "HH:MM[:SS][.fraction]"))
+      (when (and fraction-pos (not has-seconds))
+        (error 'date-time-parse-error :string string
+          :expected "HH:MM[:SS][.fraction]"))
       (make-local-time
         (%parse-fixed-integer string start (+ start 2) "HH:MM[:SS]")
         (%parse-fixed-integer string (+ start 3) (+ start 5) "HH:MM[:SS]")

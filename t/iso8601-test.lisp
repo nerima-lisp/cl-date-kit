@@ -268,10 +268,14 @@
   (it
     "rejects the profile-only local date-time forms by default"
     (signals date-time-parse-error (parse-local-date-time "2024-06-15 07:32:00"))
-    (signals date-time-parse-error (parse-local-date-time "2024-06-15T07:32")))
+    (signals date-time-parse-error (parse-local-date-time "2024-06-15T07:32"))
+    (signals date-time-parse-error (parse-local-date-time "2024-06-15T07:32.123"))
+    (signals date-time-parse-error
+      (parse-offset-date-time "2024-06-15T07:32.123+09:00")))
   (it
     "rejects omitted seconds by default"
-    (signals date-time-parse-error (parse-local-time "07:32")))
+    (signals date-time-parse-error (parse-local-time "07:32"))
+    (signals date-time-parse-error (parse-local-time "07:32.123")))
   (it-each
       (("07:32:00.1234567890") ("07:32:00.12345678901"))
       "rejects over-precise default local time ~S"
@@ -287,6 +291,8 @@
       (format-local-time (make-local-time 7 32 0) :profile profile)))
   (it-each
       (("07:32" 7 32 0 0)
+       ("07:32:00" 7 32 0 0)
+       ("07:32:00.5" 7 32 0 500000000)
        ("07:32:00.123456789123" 7 32 0 123456789))
       "accepts TOML local time form ~S"
       (string hour minute second nanosecond)
@@ -297,14 +303,31 @@
       (expect (local-time-nanosecond value) :to-be nanosecond)))
   (it-each
       (("2024-06-15 07:32" 0)
-       ("2024-06-15t07:32:00.123000000" 123000000))
+       ("2024-06-15T07:32:00.5" 500000000)
+       ("2024-06-15t07:32:00.123000000" 123000000)
+       ("2024-06-15T07:32:00.123456789123+09:00" 123456789))
       "accepts TOML local date-time form ~S"
       (string nanosecond)
-    (expect
-      (local-date-time-nanosecond (parse-local-date-time string :profile :rfc3339))
-      :to-be nanosecond))
+    (if (position #\+ string)
+        (expect
+          (offset-date-time-nanosecond
+            (parse-offset-date-time string :profile :rfc3339))
+          :to-be nanosecond)
+        (expect
+          (local-date-time-nanosecond (parse-local-date-time string :profile :rfc3339))
+          :to-be nanosecond)))
   (it-each
-      (("07:32:60") ("25:00") ("07:60") ("07:32.123x"))
+      (("2024-06-15T07:32.123")
+       ("2024-06-15T07:32.123Z")
+       ("2024-06-15T07:32.123+09:00"))
+      "rejects fractional seconds without seconds in TOML date-times ~S"
+      (string)
+    (signals date-time-parse-error
+      (if (or (position #\+ string) (position #\Z string))
+          (parse-offset-date-time string :profile :rfc3339)
+          (parse-local-date-time string :profile :rfc3339))))
+  (it-each
+      (("07:32:60") ("25:00") ("07:60") ("07:32.123") ("07:32.123x"))
       "rejects invalid TOML local time ~S"
       (string)
     (signals date-time-parse-error (parse-local-time string :profile :rfc3339)))
