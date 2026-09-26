@@ -1,13 +1,15 @@
 (in-package #:cl-date-kit)
 
 (progn
-  (defun %write-zone-offset (offset stream)
+  (defun %write-zone-offset (offset stream &key profile)
     (let ((total (zone-offset-total-seconds offset)))
       (if (zerop total) (write-char #\Z stream)
         (multiple-value-bind (sign absolute) (if (minusp total) (values "-" (- total))
             (values "+" total))
           (multiple-value-bind (hours remainder) (floor absolute 3600)
             (multiple-value-bind (minutes seconds) (floor remainder 60)
+              (when (and profile (plusp seconds))
+                (error 'invalid-zone-offset :hours 0 :minutes 0 :seconds seconds))
               (if (zerop seconds) (format stream "~A~2,'0D:~2,'0D" sign hours minutes)
                 (format stream "~A~2,'0D:~2,'0D:~2,'0D" sign hours minutes seconds))))))))
   (defun format-zone-offset (offset)
@@ -95,6 +97,39 @@
             (t (invalid-input))))
         (invalid-input)))))
 
+(defun %parse-rfc3339-offset (string start)
+  (let ((length (- (length string) start)))
+    (cond
+      ((and (= length 1) (char-equal (char string start) #\Z))
+       (zone-offset-utc))
+      ((and (= length 6) (member (char string start) '(#\+ #\-))
+            (char= (char string (+ start 3)) #\:))
+       (let ((sign (if (char= (char string start) #\-) -1 1)))
+         (zone-offset-of-hms
+           (* sign (%parse-fixed-integer string (1+ start) (+ start 3) "RFC3339 offset"))
+           (* sign (%parse-fixed-integer string (+ start 4) (+ start 6) "RFC3339 offset"))
+           0)))
+      (t (error 'date-time-parse-error :string string :expected "Z or +HH:MM")))))
+
+(defun %parse-rfc3339-local-date-time-and-offset (string)
+  (let* ((separator (or (position #\T string) (position #\t string)
+                        (position #\Space string)))
+         (offset-start (and separator
+                            (position-if
+                              (lambda (character)
+                                (member character '(#\+ #\- #\Z #\z)))
+                              string :start (1+ separator)))))
+    (unless offset-start
+      (error 'date-time-parse-error :string string :expected "date-time with Z or +HH:MM"))
+    (values
+      (make-local-date-time
+        (make-local-date
+          (%parse-fixed-integer string 0 4 "YYYY-MM-DD")
+          (%parse-fixed-integer string 5 7 "YYYY-MM-DD")
+          (%parse-fixed-integer string 8 10 "YYYY-MM-DD"))
+        (%parse-toml-local-time string 11 offset-start))
+      (%parse-rfc3339-offset string offset-start))))
+
 (defun %parse-local-date-time-and-offset (string)
   (unless (stringp string)
     (error
@@ -134,12 +169,12 @@
         (parse-zone-offset string offset-start (length string))))))
 
 
-(defun format-instant (instant)
+(defun format-instant (instant &key profile)
   "Formats INSTANT as the canonical ISO 8601 UTC form YYYY-MM-DDTHH:MM:SS[.nnnnnnnnn]Z."
   (with-output-to-string (stream)
-    (%write-local-date-time
+      (%write-local-date-time
       (local-date-time-of-instant instant (zone-offset-utc))
-      stream)
+      stream :profile profile)
     (write-char #\Z stream)))
 
 (progn
@@ -180,24 +215,31 @@
                 (* minute 60)
                 second)
               0))))))
-  (defun parse-instant (string)
+  (defun parse-instant (string &key profile)
     "Parses an ISO 8601 date-time STRING with a required offset or Z suffix as an INSTANT."
-    (or
+    (if profile
+        (multiple-value-bind (local-date-time offset)
+            (%parse-rfc3339-local-date-time-and-offset string)
+          (local-date-time-to-instant local-date-time offset))
+      (or
       (%parse-canonical-utc-instant string)
       (multiple-value-bind (local-date-time offset) (%parse-local-date-time-and-offset string)
-        (local-date-time-to-instant local-date-time offset)))))
+        (local-date-time-to-instant local-date-time offset))))))
 
-(defun format-offset-date-time (offset-date-time)
+(defun format-offset-date-time (offset-date-time &key profile)
   "Formats OFFSET-DATE-TIME as an ISO 8601 date-time with its numeric UTC offset."
   (with-output-to-string (stream)
-    (%write-local-date-time
+      (%write-local-date-time
       (offset-date-time-local-date-time offset-date-time)
-      stream)
-    (%write-zone-offset (offset-date-time-offset offset-date-time) stream)))
+      stream :profile profile)
+    (%write-zone-offset (offset-date-time-offset offset-date-time) stream
+      :profile profile)))
 
-(defun parse-offset-date-time (string)
+(defun parse-offset-date-time (string &key profile)
   "Parses an ISO 8601 local date-time with a required numeric or UTC offset."
-  (multiple-value-bind (local-date-time offset) (%parse-local-date-time-and-offset string)
+  (multiple-value-bind (local-date-time offset)
+      (if profile (%parse-rfc3339-local-date-time-and-offset string)
+        (%parse-local-date-time-and-offset string))
     (make-offset-date-time local-date-time offset)))
 
 (defun format-offset-time (offset-time)

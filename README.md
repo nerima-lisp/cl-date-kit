@@ -51,7 +51,7 @@ for `PARSE-RRULE`, `MAKE-RRULE-SCHEDULE`, `MAKE-RRULE-SET`, and the streaming
 ```nix
 # flake.nix
 inputs.cl-date-kit = {
-  url = "github:nerima-lisp/cl-date-kit/v1.0.0";
+  url = "github:nerima-lisp/cl-date-kit/v1.1.0";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 ```

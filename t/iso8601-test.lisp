@@ -252,3 +252,60 @@
       "rejects the malformed or descending endpoint in ~S"
       (input)
     (signals date-time-parse-error (cl-date-kit:parse-local-date-interval input))))
+
+(describe
+  "RFC3339/TOML date-time profile"
+  (it-each
+      (("07:32" 7 32 0 0)
+       ("07:32:00.123456789123" 7 32 0 123456789))
+      "accepts TOML local time form ~S"
+      (string hour minute second nanosecond)
+    (let ((value (parse-local-time string :profile :rfc3339)))
+      (expect (local-time-hour value) :to-be hour)
+      (expect (local-time-minute value) :to-be minute)
+      (expect (local-time-second value) :to-be second)
+      (expect (local-time-nanosecond value) :to-be nanosecond)))
+  (it-each
+      (("2024-06-15 07:32" 0)
+       ("2024-06-15t07:32:00.123000000" 123000000))
+      "accepts TOML local date-time form ~S"
+      (string nanosecond)
+    (expect
+      (local-date-time-nanosecond (parse-local-date-time string :profile :rfc3339))
+      :to-be nanosecond))
+  (it-each
+      (("07:32:60") ("25:00") ("07:60") ("07:32.123x"))
+      "rejects invalid TOML local time ~S"
+      (string)
+    (signals date-time-parse-error (parse-local-time string :profile :rfc3339)))
+  (it-each
+      (("2024-02-30T07:32") ("2024-06-15T07:32+09")
+       ("2024-06-15T07:32:60Z"))
+      "rejects invalid TOML date-time ~S"
+      (string)
+    (signals date-time-parse-error (parse-instant string :profile :rfc3339)))
+  (it
+    "formats a minimal preserving TOML fraction"
+    (let ((value (local-date-time-of 2024 6 15 7 32 0 123000000)))
+      (expect (format-local-date-time value :profile :rfc3339)
+        :to-equal "2024-06-15T07:32:00.123")
+      (expect
+        (local-date-time=
+          (parse-local-date-time
+            (format-local-date-time value :profile :rfc3339)
+            :profile :rfc3339)
+          value)
+        :to-be-truthy)))
+  (it-property
+      "round-trips TOML local times"
+      ((hour (gen-integer :min 0 :max 23))
+       (minute (gen-integer :min 0 :max 59))
+       (second (gen-integer :min 0 :max 59))
+       (nanosecond (gen-integer :min 0 :max 999999999)))
+    (let ((value (make-local-time hour minute second nanosecond)))
+      (expect
+        (local-time=
+          (parse-local-time (format-local-time value :profile :rfc3339)
+            :profile :rfc3339)
+          value)
+        :to-be-truthy))))

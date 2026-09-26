@@ -679,6 +679,14 @@ retain a total order.
 
 ## ISO8601 (`src/iso8601-date.lisp`, `src/iso8601.lisp`, `src/iso8601-offset.lisp`)
 
+`PARSE-LOCAL-TIME`, `PARSE-LOCAL-DATE-TIME`, `PARSE-INSTANT`, and
+`PARSE-OFFSET-DATE-TIME` accept `:PROFILE :RFC3339` for TOML 1.1.0-compatible
+input. The profile permits omitted seconds, a space date/time separator, any
+fractional precision (truncated, never rounded, to nanoseconds), and only
+`Z`/`z` or `+HH:MM`/`-HH:MM` offsets. The corresponding format functions accept
+the same keyword and emit `T`, omit zero fractions, and emit the shortest
+fraction that preserves the value. Leap seconds remain invalid.
+
 `FORMAT-LOCAL-DATE`/`PARSE-LOCAL-DATE` (canonical "YYYY-MM-DD" output;
 parses calendar, ordinal, and week date forms in both extended and basic
 notation), `FORMAT-LOCAL-DATE-ORDINAL`/`PARSE-LOCAL-DATE-ORDINAL`
