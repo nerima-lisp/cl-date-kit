@@ -177,15 +177,17 @@ TZDIR environment variable and the standard zoneinfo directory are searched."
       (time-zone (%time-zone-offset-for-instant zone (instant-epoch-second instant))))))
 
 (progn
+  (defun %time-zone-from-tzif-octets (name octets path)
+    (let* ((data (parse-tzif-octets octets path))
+           (posix-tz-string (tzif-data-posix-tz-string data))
+           (rule
+            (and posix-tz-string
+                 (parse-posix-tz-string posix-tz-string path))))
+      (%make-time-zone (copy-seq name) data rule)))
   (defun time-zone-from-tzif-octets (name octets)
     "Builds the time zone NAME from a TZif vector of octets."
     (check-type name string)
-    (let* ((data (parse-tzif-octets octets name))
-           (posix-tz-string (tzif-data-posix-tz-string data))
-           (rule
-             (and posix-tz-string
-                  (parse-posix-tz-string posix-tz-string name))))
-      (%make-time-zone (copy-seq name) data rule)))
+    (%time-zone-from-tzif-octets name octets name))
   (defvar *time-zone-cache* (make-hash-table :test (function equal)))
   (defvar *time-zone-cache-lock* (sb-thread:make-mutex :name "cl-date-kit time-zone cache"))
   (defun %time-zone-cache-key (name path)
@@ -208,7 +210,7 @@ TZDIR environment variable and the standard zoneinfo directory are searched."
         (or
           (sb-thread:with-mutex (*time-zone-cache-lock*) (gethash key *time-zone-cache*))
           (let ((candidate
-                  (time-zone-from-tzif-octets name (%read-file-bytes path))))
+                  (%time-zone-from-tzif-octets name (%read-file-bytes path) path)))
             (sb-thread:with-mutex
               (*time-zone-cache-lock*)
               (or
