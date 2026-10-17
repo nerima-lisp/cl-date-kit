@@ -181,7 +181,7 @@
               locale)
             value)
           :to-be-truthy)))
-    (it
+    (it-needs-zoneinfo
       "formats local, fixed-offset, named-zone, and instant values"
       (let* ((local (local-date-time-of 2024 2 29 7 5 9 0))
              (offset (zone-offset-of-hms 9 30 0))
@@ -226,7 +226,7 @@
           (format-date-time-with-pattern "yyyy-MM-dd'T'HH:mm:ssX" (make-instant 0))
           :to-equal
           "1970-01-01T00:00:00Z")))
-    (it
+    (it-needs-zoneinfo
       "reports malformed patterns and unavailable temporal fields"
       (signals date-time-format-error (make-date-time-formatter "MMMMM"))
       (progn

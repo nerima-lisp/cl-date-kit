@@ -454,7 +454,7 @@
           (zoned-date-time-local value)
           (local-date-time-of 2024 6 15 0 0 0))
         :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "moves a midnight gap to the first valid local time"
     (let ((value
           (local-date-at-start-of-day-in-zone
@@ -465,7 +465,7 @@
           (zoned-date-time-local value)
           (local-date-time-of 2018 11 4 1 0 0))
         :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "rejects a midnight gap under strict disambiguation"
     (signals
       nonexistent-local-time

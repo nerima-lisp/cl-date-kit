@@ -281,7 +281,7 @@
 
 
 (describe "OffsetDateTime zone conversion"
-  (it "keeps the instant or local fields as requested"
+  (it-needs-zoneinfo "keeps the instant or local fields as requested"
     (let* ((zone (find-time-zone "America/New_York"))
            (value
              (cl-date-kit:offset-date-time-of
@@ -298,7 +298,7 @@
       (expect (zoned-date-time-hour similar-local) :to-be 1)
       (expect (zone-offset-total-seconds (zoned-date-time-offset similar-local))
         :to-be -14400)))
-  (it "prefers a matching offset during the New York overlap"
+  (it-needs-zoneinfo "prefers a matching offset during the New York overlap"
     (let* ((zone (find-time-zone "America/New_York"))
            (earlier
              (cl-date-kit:offset-date-time-at-zone-similar-local
@@ -378,7 +378,7 @@
 
 (describe
   "OffsetDateTime zone conversion"
-  (it
+  (it-needs-zoneinfo
     "resolves the New York spring gap using compatible local time"
     (let* ((zone (find-time-zone "America/New_York"))
            (result

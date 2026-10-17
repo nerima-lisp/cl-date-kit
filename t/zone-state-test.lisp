@@ -1,7 +1,7 @@
 (in-package #:cl-date-kit/test)
 
 (progn
-  (it
+  (it-needs-zoneinfo
     "projects components without constructing an intermediate local date-time"
     (let ((original (symbol-function 'cl-date-kit:local-date-time-of-instant))
           (calls 0)
@@ -21,7 +21,7 @@
             :to-be-truthy)
           (expect calls :to-be 0))
         (setf (symbol-function 'cl-date-kit:local-date-time-of-instant) original))))
-  (it
+  (it-needs-zoneinfo
     "projects New York instants across the 2024 DST spring-forward boundary"
     (let* ((new-york (find-time-zone "America/New_York"))
            (before (make-instant 1710053999 123456789))
@@ -57,7 +57,7 @@
 
 (describe
   "ZONE-STATE-FOR-INSTANT"
-  (it
+  (it-needs-zoneinfo
     "reports New York standard and daylight states at exact transition boundaries"
     (let* ((ny (find-time-zone "America/New_York"))
            (winter
@@ -154,7 +154,7 @@
            (state (cl-date-kit::%tzif-type->state data type)))
       (expect (zone-offset-total-seconds (zone-state-offset state)) :to-be 3600)
       (expect (zone-state-abbreviation state) :to-be nil)))
-  (it
+  (it-needs-zoneinfo
     "keeps offset-for-instant equivalent to the selected state through the POSIX footer"
     (let* ((ny (find-time-zone "America/New_York"))
            (instant
@@ -176,7 +176,7 @@
 
 (describe
   "local time resolution lookup reuse"
-  (it
+  (it-needs-zoneinfo
     "avoids a TZif lookup after explicit transition classification"
     (let* ((zone (find-time-zone "America/New_York"))
            (local-date-time (local-date-time-of 2024 1 15 12 0 0))

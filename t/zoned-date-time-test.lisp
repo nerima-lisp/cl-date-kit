@@ -4,8 +4,10 @@
 
 (describe
   "constructing from a local date-time or an instant"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
-  (it
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
+  (it-needs-zoneinfo
     "ZONED-DATE-TIME-OF-LOCAL resolves normal local time"
     (let* ((ldt (local-date-time-of 2024 6 15 12 0 0))
            (zdt (zoned-date-time-of-local
@@ -13,7 +15,7 @@
       (expect (local-date-time= (zoned-date-time-local zdt) ldt) :to-be-truthy)
       (expect (zone-offset-total-seconds (zoned-date-time-offset zdt))
               :to-be -14400)))
-  (it
+  (it-needs-zoneinfo
     "ZONED-DATE-TIME-OF-INSTANT is the inverse for a normal instant"
     (let* ((zone *new-york*)
            (zdt
@@ -33,7 +35,7 @@
           direct-local
           (zoned-date-time-local zdt))
         :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "compatible New York spring-gap construction round-trips at 03:30 EDT"
     (let* ((zone *new-york*)
            (zdt (zoned-date-time-of-local (local-date-time-of 2024 3 10 2 30 0) zone))
@@ -50,7 +52,7 @@
 
 (describe
   "ZONED-DATE-TIME-WITH-ZONE-SAME-INSTANT"
-  (it
+  (it-needs-zoneinfo
     "preserves the absolute instant while changing the zone"
     (let* ((ny (find-time-zone "America/New_York"))
            (tokyo (find-time-zone "Asia/Tokyo"))
@@ -63,8 +65,10 @@
 
 (describe
   "DST overlap preservation"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
-  (it
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
+  (it-needs-zoneinfo
     "retains a later overlap offset when adding a zero period"
     (let* ((zone *new-york*)
            (original
@@ -79,7 +83,7 @@
        (zone-offset-total-seconds (zoned-date-time-offset result))
        :to-be
        -18000)))
-  (it
+  (it-needs-zoneinfo
     "with-zone-same-local preserves fields and re-resolves the instant"
     (let* ((new-york *new-york*)
            (tokyo (find-time-zone "Asia/Tokyo"))
@@ -92,7 +96,7 @@
         (zoned-date-time-local original))
        :to-be-truthy)
       (expect (zoned-date-time< result original) :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "with-zone-same-local delegates overlap resolution options"
     (let* ((new-york *new-york*)
            (utc (find-time-zone "UTC"))
@@ -115,7 +119,7 @@
 
 (describe
   "ZonedDateTime field replacement"
-  (it
+  (it-needs-zoneinfo
    "replaces local fields while retaining the zone and source value"
    (let* ((zone (find-time-zone "UTC"))
           (value
@@ -149,7 +153,7 @@
        (zoned-date-time-local value)
        (local-date-time-of 2024 2 29 12 34 56 123456789))
       :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
    "retains the valid offset in an overlap and resolves a gap compatibly"
    (let* ((zone (find-time-zone "America/New_York"))
           (overlap
@@ -178,7 +182,7 @@
       (zone-offset-total-seconds (zoned-date-time-offset gap-resolved))
       :to-be
       -14400)))
-  (it
+  (it-needs-zoneinfo
    "validates replacement field values"
    (let ((value
           (zoned-date-time-of-local
@@ -189,7 +193,7 @@
         (cl-date-kit:zoned-date-time-with-minute value 60))
       :to-throw
       (quote invalid-time))))
-  (it
+  (it-needs-zoneinfo
    "exposes local date, time, and fields without changing an overlap value"
    (let* ((zone (find-time-zone "America/New_York"))
           (value
@@ -216,7 +220,7 @@
              :to-be -18000))))
 
 (describe "ZONED-DATE-TIME overlap offset selectors"
-  (it "selects either instant without changing the local fields"
+  (it-needs-zoneinfo "selects either instant without changing the local fields"
     (let* ((zone (find-time-zone "America/New_York"))
            (local (local-date-time-of 2024 11 3 1 30 0))
            (later (zoned-date-time-of-local local zone :disambiguation :later))
@@ -229,7 +233,7 @@
       (expect (instant< (zoned-date-time-to-instant earlier)
                         (zoned-date-time-to-instant selected-later))
               :to-be-truthy)))
-  (it "returns the original value outside an overlap"
+  (it-needs-zoneinfo "returns the original value outside an overlap"
     (let* ((zone (find-time-zone "America/New_York"))
            (value (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) zone)))
       (expect (eq (cl-date-kit:zoned-date-time-with-earlier-offset-at-overlap value) value)
@@ -239,8 +243,10 @@
 
 (describe
   "ZONED-DATE-TIME-OF-STRICT"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
-  (it
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
+  (it-needs-zoneinfo
     "constructs normal local times and round-trips their instant"
     (let* ((zone *new-york*)
            (local (local-date-time-of 2024 6 15 12 0 0))
@@ -261,7 +267,7 @@
               :to-be-truthy)
       (expect (zone-offset-total-seconds (zoned-date-time-offset round-trip))
               :to-be -14400)))
-  (it
+  (it-needs-zoneinfo
     "accepts both valid offsets in a New York overlap"
     (let* ((zone *new-york*)
            (local (local-date-time-of 2024 11 3 1 30 0))
@@ -282,7 +288,7 @@
       (expect (instant< (zoned-date-time-to-instant earlier)
                         (zoned-date-time-to-instant later))
               :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "rejects mismatches and gaps"
     (let ((zone *new-york*))
       (signals cl-date-kit:invalid-zoned-date-time-offset
@@ -300,7 +306,7 @@
          (local-date-time-of 2024 11 3 1 30 0)
          (zone-offset-of-hours -6)
          zone))))
-  (it
+  (it-needs-zoneinfo
     "accepts a fixed-offset zone"
     (let* ((zone (zone-offset-of-hours 9))
            (local (local-date-time-of 2024 6 15 12 0 0))
@@ -316,7 +322,7 @@
 
 (describe
    "ZONED-DATE-TIME-TO-OFFSET-DATE-TIME"
-   (it
+   (it-needs-zoneinfo
     "snapshots local fields and resolved offsets, including both New York overlap choices"
     (let* ((zone (find-time-zone "America/New_York"))
            (overlap (local-date-time-of 2024 11 3 1 30 45 123456789))
@@ -360,7 +366,7 @@
 
 (describe
    "ZONED-DATE-TIME-WITH-FIXED-OFFSET-ZONE"
-   (it
+   (it-needs-zoneinfo
     "preserves local fields, offset, and instant for normal and overlap values"
     (let* ((zone (find-time-zone "America/New_York"))
            (overlap (local-date-time-of 2024 11 3 1 30 45 123456789))
@@ -403,7 +409,7 @@
 
 (describe
  "LOCAL-DATE-TIME-AT-ZONE"
- (it
+ (it-needs-zoneinfo
   "forwards preferred offsets when resolving a DST overlap"
   (let* ((zone (find-time-zone "America/New_York"))
          (local (local-date-time-of 2024 11 3 1 30 0))

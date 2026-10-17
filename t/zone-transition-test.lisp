@@ -3,7 +3,7 @@
 (defvar *new-york* nil)
 
 (progn
-  (it
+  (it-needs-zoneinfo
     "America/New_York is UTC-5 in January (standard time) and UTC-4 in July (daylight time)"
     (let ((ny (find-time-zone "America/New_York")))
       (expect
@@ -22,7 +22,7 @@
               (zoned-date-time-of-local (local-date-time-of 2024 7 15 12 0 0) ny))))
         :to-be
         -14400)))
-  (it
+  (it-needs-zoneinfo
     "converts instants through a named zone"
     (let* ((ny (find-time-zone "America/New_York"))
            (local (local-date-time-of 2024 7 15 12 0 0))
@@ -32,47 +32,51 @@
         :to-be-truthy))))
 
 (describe "resolving a wall-clock LOCAL-DATE-TIME: the DST spring-forward gap"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
   ;; 2024-03-10 02:00 America/New_York: clocks jump straight to 03:00 EDT.
   ;; 02:00-02:59:59 never happened that day.
-  (it "POSSIBLE-OFFSETS-FOR-LOCAL-DATE-TIME returns no offsets for a time inside the gap"
+  (it-needs-zoneinfo "POSSIBLE-OFFSETS-FOR-LOCAL-DATE-TIME returns no offsets for a time inside the gap"
     (expect (possible-offsets-for-local-date-time (local-date-time-of 2024 3 10 2 30 0) *new-york*)
             :to-equal '()))
 
-  (it "RESOLVE-LOCAL-DATE-TIME signals NONEXISTENT-LOCAL-TIME with :DISAMBIGUATION :STRICT"
+  (it-needs-zoneinfo "RESOLVE-LOCAL-DATE-TIME signals NONEXISTENT-LOCAL-TIME with :DISAMBIGUATION :STRICT"
     (signals nonexistent-local-time
       (resolve-local-date-time (local-date-time-of 2024 3 10 2 30 0) *new-york* :disambiguation :strict)))
 
-  (it "RESOLVE-LOCAL-DATE-TIME with the :COMPATIBLE default resolves to the post-gap (EDT) offset"
+  (it-needs-zoneinfo "RESOLVE-LOCAL-DATE-TIME with the :COMPATIBLE default resolves to the post-gap (EDT) offset"
     (expect (zone-offset-total-seconds (resolve-local-date-time (local-date-time-of 2024 3 10 2 30 0) *new-york*))
             :to-be -14400))
 
-  (it "RESOLVE-LOCAL-DATE-TIME with :DISAMBIGUATION :EARLIER resolves to the pre-gap (EST) offset"
+  (it-needs-zoneinfo "RESOLVE-LOCAL-DATE-TIME with :DISAMBIGUATION :EARLIER resolves to the pre-gap (EST) offset"
     (expect (zone-offset-total-seconds (resolve-local-date-time (local-date-time-of 2024 3 10 2 30 0) *new-york* :disambiguation :earlier))
             :to-be -18000)))
 
 (describe "resolving a wall-clock LOCAL-DATE-TIME: the DST fall-back overlap"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
   ;; 2024-11-03 America/New_York: clocks fall back from 02:00 EDT to 01:00
   ;; EST, so 01:00-01:59:59 happens twice.
-  (it "POSSIBLE-OFFSETS-FOR-LOCAL-DATE-TIME returns the earlier (EDT) offset first, then the later (EST) one"
+  (it-needs-zoneinfo "POSSIBLE-OFFSETS-FOR-LOCAL-DATE-TIME returns the earlier (EDT) offset first, then the later (EST) one"
     (expect (mapcar #'zone-offset-total-seconds
                      (possible-offsets-for-local-date-time (local-date-time-of 2024 11 3 1 30 0) *new-york*))
             :to-equal '(-14400 -18000)))
 
-  (it "RESOLVE-LOCAL-DATE-TIME signals AMBIGUOUS-LOCAL-TIME with :DISAMBIGUATION :STRICT"
+  (it-needs-zoneinfo "RESOLVE-LOCAL-DATE-TIME signals AMBIGUOUS-LOCAL-TIME with :DISAMBIGUATION :STRICT"
     (signals ambiguous-local-time
       (resolve-local-date-time (local-date-time-of 2024 11 3 1 30 0) *new-york* :disambiguation :strict)))
 
-  (it "RESOLVE-LOCAL-DATE-TIME with the :COMPATIBLE default resolves to the earlier (EDT) offset"
+  (it-needs-zoneinfo "RESOLVE-LOCAL-DATE-TIME with the :COMPATIBLE default resolves to the earlier (EDT) offset"
     (expect (zone-offset-total-seconds (resolve-local-date-time (local-date-time-of 2024 11 3 1 30 0) *new-york*))
             :to-be -14400))
 
-  (it "RESOLVE-LOCAL-DATE-TIME with :DISAMBIGUATION :LATER resolves to the later (EST) offset"
+  (it-needs-zoneinfo "RESOLVE-LOCAL-DATE-TIME with :DISAMBIGUATION :LATER resolves to the later (EST) offset"
     (expect (zone-offset-total-seconds (resolve-local-date-time (local-date-time-of 2024 11 3 1 30 0) *new-york* :disambiguation :later))
             :to-be -18000))
 
-  (it-each
+  (it-each-needs-zoneinfo
       ((2024 6 15 12 0 0)
        (2024 11 3 1 30 0)
        (2024 3 10 2 30 0))
@@ -86,8 +90,10 @@
 
 (describe
   "future TZif footer transition classification"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
-  (it
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
+  (it-needs-zoneinfo
     "resolves a 2100 New York summer local time to the footer daylight offset"
     (let ((ny *new-york*))
       (expect
@@ -96,7 +102,7 @@
           (possible-offsets-for-local-date-time (local-date-time-of 2100 7 1 12 0 0) ny))
         :to-equal
         '(-14400))))
-  (it
+  (it-needs-zoneinfo
     "recognizes the 2100 New York spring gap beyond the explicit table"
     (let ((ny *new-york*))
       (expect
@@ -110,7 +116,7 @@
           ny
           :disambiguation
           :strict))))
-  (it
+  (it-needs-zoneinfo
     "recognizes the 2100 New York fall overlap beyond the explicit table"
     (let ((ny *new-york*))
       (expect
@@ -129,7 +135,7 @@
 
 (describe
   "a normal (non-gap, non-overlap) local time resolves to exactly one offset"
-  (it
+  (it-needs-zoneinfo
     "resolves noon in mid-summer to the single daylight-time offset"
     (expect
       (mapcar
@@ -142,8 +148,10 @@
 
 (describe
   "ZONE-TRANSITION queries"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
-  (it
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
+  (it-needs-zoneinfo
     "returns New York 2024 transitions for local gaps and overlaps"
     (let* ((ny *new-york*)
            (spring
@@ -204,7 +212,7 @@
           (zone-transition-date-time-after fall)
           (local-date-time-of 2024 11 3 1 0 0))
         :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "returns NIL for normal local times and fixed offsets"
     (let ((ny *new-york*))
       (expect
@@ -217,7 +225,7 @@
           (zone-offset-utc))
         :to-be
         nil)))
-  (it
+  (it-needs-zoneinfo
     "uses the POSIX footer for the 2100 New York spring gap"
     (let* ((ny *new-york*)
            (transition
@@ -237,7 +245,7 @@
         :to-be
         -14400)
       (expect (zone-transition-gap-p transition) :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "reports New York\x27s 2024 gap and overlap with strict instant boundaries"
     (let* ((ny *new-york*)
            (spring
@@ -271,7 +279,7 @@
       (expect
         (zone-transition-overlap-p (next-zone-transition ny spring))
         :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "uses the POSIX footer for future next and previous transitions"
     (let* ((ny *new-york*)
            (start
@@ -291,12 +299,12 @@
       (expect (instant= (zone-transition-instant next) spring) :to-be-truthy)
       (expect (instant= (zone-transition-instant previous) spring) :to-be-truthy)
       (expect (zone-transition-gap-p next) :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "returns NIL for fixed-offset zones"
     (let ((utc (zone-offset-utc)))
       (expect (next-zone-transition utc (make-instant 0)) :to-be nil)
       (expect (previous-zone-transition utc (make-instant 0)) :to-be nil)))
-  (it
+  (it-needs-zoneinfo
     "falls back to the POSIX footer when no real explicit transition precedes the instant"
     (let* ((same-offset-type (cl-date-kit::make-tzif-type :utc-offset -18000 :dst-p nil))
            (data
@@ -334,8 +342,10 @@
 
 (describe
   "TIME-ZONE-TRANSITIONS-BETWEEN"
-  (before-each (setf *new-york* (find-time-zone "America/New_York")))
-  (it
+  (before-each
+  (when (%zoneinfo-database-available-p)
+    (setf *new-york* (find-time-zone "America/New_York"))))
+  (it-needs-zoneinfo
     "returns ordered New York 2024 DST transitions"
     (let* ((ny *new-york*)
            (start
@@ -363,7 +373,7 @@
         (instant= (zone-transition-instant (second transitions)) fall)
         :to-be-truthy)
       (expect (mapcar #'zone-transition-gap-p transitions) :to-equal '(t nil))))
-  (it
+  (it-needs-zoneinfo
     "uses a half-open range with exact and nanosecond boundaries"
     (let* ((ny *new-york*)
            (spring
@@ -391,7 +401,7 @@
         :to-be-truthy)
       (expect before-end :to-be nil)
       (expect after-start :to-be nil)))
-  (it
+  (it-needs-zoneinfo
     "returns NIL for fixed-offset and no-DST zones"
     (let ((start
           (local-date-time-to-instant
@@ -406,7 +416,7 @@
         (time-zone-transitions-between (find-time-zone "Asia/Tokyo") start end)
         :to-be
         nil)))
-  (it
+  (it-needs-zoneinfo
     "validates zones and non-empty interval endpoints"
     (let ((start (make-instant 0))
           (end (make-instant 1)))
@@ -419,7 +429,7 @@
       (signals
         invalid-interval
         (time-zone-transitions-between (zone-offset-utc) end start))))
-  (it
+  (it-needs-zoneinfo
     "uses the POSIX footer after explicit TZif transitions"
     (let* ((ny *new-york*)
            (start

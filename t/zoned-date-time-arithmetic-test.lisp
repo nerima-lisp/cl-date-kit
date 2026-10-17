@@ -1,7 +1,7 @@
 (in-package #:cl-date-kit/test)
 
 (describe "ZonedDateTime fixed-unit arithmetic"
-  (it "uses elapsed time across the DST spring-forward gap"
+  (it-needs-zoneinfo "uses elapsed time across the DST spring-forward gap"
     (let* ((new-york (find-time-zone "America/New_York"))
            (before (zoned-date-time-of-local
                     (local-date-time-of 2024 3 10 1 59 59 999500000)
@@ -14,7 +14,7 @@
       (expect (zone-offset-total-seconds (zoned-date-time-offset after))
               :to-be -14400)))
 
-  (it "uses elapsed time across the DST fall-back overlap"
+  (it-needs-zoneinfo "uses elapsed time across the DST fall-back overlap"
     (let* ((new-york (find-time-zone "America/New_York"))
            (before (zoned-date-time-of-local
                     (local-date-time-of 2024 11 3 1 59 59 999500000)
@@ -28,7 +28,7 @@
       (expect (zone-offset-total-seconds (zoned-date-time-offset after))
               :to-be -18000)))
 
-  (it "reverses every fixed unit"
+  (it-needs-zoneinfo "reverses every fixed unit"
     (let* ((zone (find-time-zone "UTC"))
            (value (zoned-date-time-of-local
                    (local-date-time-of 2024 1 1 0 0 0 500000)
@@ -65,7 +65,7 @@
               :to-be-truthy))))
 
 (describe "duration and period arithmetic"
-  (it "ZONED-DATE-TIME-PLUS-DURATION adds exact elapsed time, crossing the DST gap correctly"
+  (it-needs-zoneinfo "ZONED-DATE-TIME-PLUS-DURATION adds exact elapsed time, crossing the DST gap correctly"
     ;; 2024-03-10 01:30 EST + 2 hours of *elapsed* time lands at 04:30 EDT
     ;; (not 03:30), because 02:00-02:59 does not exist to add time through.
     (let* ((ny (find-time-zone "America/New_York"))
@@ -73,7 +73,7 @@
            (after (zoned-date-time-plus-duration before (duration-of-hours 2))))
       (expect (local-date-time= (zoned-date-time-local after) (local-date-time-of 2024 3 10 4 30 0)) :to-be-truthy)))
 
-  (it "ZONED-DATE-TIME-PLUS-PERIOD adjusts the wall clock by a full day, not by 24 hours of elapsed time"
+  (it-needs-zoneinfo "ZONED-DATE-TIME-PLUS-PERIOD adjusts the wall clock by a full day, not by 24 hours of elapsed time"
     ;; Noon EST on March 9 to noon EDT on March 10 spans the spring-forward
     ;; transition (2024-03-10 02:00 local), so only 23 hours actually elapse.
     (let* ((ny (find-time-zone "America/New_York"))
@@ -82,7 +82,7 @@
       (expect (local-date-time= (zoned-date-time-local after) (local-date-time-of 2024 3 10 12 0 0)) :to-be-truthy)
       (expect (duration-to-seconds (instant-until (zoned-date-time-to-instant before) (zoned-date-time-to-instant after))) :to-be (* 23 3600))))
 
-  (it "ZONED-DATE-TIME-MINUS-DURATION/PERIOD are the inverse of their PLUS counterparts"
+  (it-needs-zoneinfo "ZONED-DATE-TIME-MINUS-DURATION/PERIOD are the inverse of their PLUS counterparts"
     (let* ((ny (find-time-zone "America/New_York")) (zdt (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) ny)))
       (expect (zoned-date-time= (zoned-date-time-minus-duration (zoned-date-time-plus-duration zdt (duration-of-hours 3)) (duration-of-hours 3)) zdt) :to-be-truthy)
       (expect (local-date-time= (zoned-date-time-local (zoned-date-time-minus-period (zoned-date-time-plus-period zdt (period-of-days 5)) (period-of-days 5)))
@@ -90,14 +90,14 @@
               :to-be-truthy))))
 
 (describe "calendar-unit arithmetic"
-  (it "ZONED-DATE-TIME-PLUS-DAYS follows the local calendar across a DST gap"
+  (it-needs-zoneinfo "ZONED-DATE-TIME-PLUS-DAYS follows the local calendar across a DST gap"
     (let* ((ny (find-time-zone "America/New_York"))
            (before (zoned-date-time-of-local (local-date-time-of 2024 3 9 12 0 0) ny))
            (after (zoned-date-time-plus-days before 1)))
       (expect (local-date-time= (zoned-date-time-local after) (local-date-time-of 2024 3 10 12 0 0)) :to-be-truthy)
       (expect (duration-to-seconds (instant-until (zoned-date-time-to-instant before) (zoned-date-time-to-instant after))) :to-be (* 23 3600))))
 
-  (it "calendar-unit helpers preserve period semantics and inverse operations"
+  (it-needs-zoneinfo "calendar-unit helpers preserve period semantics and inverse operations"
     (let* ((utc (find-time-zone "UTC"))
            (value (zoned-date-time-of-local (local-date-time-of 2024 1 31 10 15 0) utc))
            (ordinary (zoned-date-time-of-local (local-date-time-of 2024 1 15 10 15 0) utc))
@@ -112,7 +112,7 @@
 
 (describe
   "ordering compares by absolute instant"
-  (it
+  (it-needs-zoneinfo
   "orders absolute instants across zones and DST overlaps"
   (let* ((ny (find-time-zone "America/New_York"))
          (tokyo (find-time-zone "Asia/Tokyo"))
@@ -127,7 +127,7 @@
     (expect (zoned-date-time> later earlier) :to-be-truthy)
     (expect (zoned-date-time<= later earlier) :to-be-falsy)
     (expect (zoned-date-time>= earlier later) :to-be-falsy)))
-  (it
+  (it-needs-zoneinfo
     "ZONED-DATE-TIME-UNTIL follows elapsed time across a DST transition"
     (let* ((new-york (find-time-zone "America/New_York"))
            (start (zoned-date-time-of-local
@@ -141,7 +141,7 @@
 
 (describe
   "fixed-unit truncation"
-  (it
+  (it-needs-zoneinfo
    "retains a valid later offset in a daylight-saving overlap"
    (let* ((zone (find-time-zone "America/New_York"))
           (original
@@ -162,7 +162,7 @@
       -18000))))
 
 (describe "ZonedDateTime epoch-second conversions"
-  (it-each
+  (it-each-needs-zoneinfo
       ((-1 999999999 "UTC")
        (1710055800 123456789 "America/New_York"))
       "round-trips absolute fields through ~A"
@@ -173,9 +173,9 @@
       (expect (zoned-date-time-nanosecond value) :to-be nanosecond)
       (expect (eq (zoned-date-time-zone value) zone) :to-be-truthy))))
 
-(describe "ZonedDateTime fixed-unit rounding" (it "re-resolves an ambiguous local result while retaining a valid offset" (let* ((zone (find-time-zone "America/New_York")) (source (zoned-date-time-of-local (local-date-time-of 2024 11 3 1 30 0) zone :preferred-offset (zone-offset-of-hours -5))) (rounded (zoned-date-time-rounded-to source :hours :mode :floor))) (expect (local-date-time-hour (zoned-date-time-local rounded)) :to-be 1) (expect (zone-offset-total-seconds (zoned-date-time-offset rounded)) :to-be -18000))))
+(describe "ZonedDateTime fixed-unit rounding" (it-needs-zoneinfo "re-resolves an ambiguous local result while retaining a valid offset" (let* ((zone (find-time-zone "America/New_York")) (source (zoned-date-time-of-local (local-date-time-of 2024 11 3 1 30 0) zone :preferred-offset (zone-offset-of-hours -5))) (rounded (zoned-date-time-rounded-to source :hours :mode :floor))) (expect (local-date-time-hour (zoned-date-time-local rounded)) :to-be 1) (expect (zone-offset-total-seconds (zoned-date-time-offset rounded)) :to-be -18000))))
 
-(describe "ZonedDateTime instant comparisons" (it "orders equal, earlier, and later instants for inclusive comparisons" (let* ((utc (find-time-zone "UTC")) (new-york (find-time-zone "America/New_York")) (value (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) utc)) (same-instant (zoned-date-time-of-instant (zoned-date-time-to-instant value) new-york)) (before (zoned-date-time-minus-seconds value 1)) (after (zoned-date-time-plus-seconds value 1))) (expect (zoned-date-time<= value same-instant) :to-be-truthy) (expect (zoned-date-time<= value after) :to-be-truthy) (expect (zoned-date-time<= value before) :to-be-falsy) (expect (zoned-date-time>= value same-instant) :to-be-truthy) (expect (zoned-date-time>= value before) :to-be-truthy) (expect (zoned-date-time>= value after) :to-be-falsy))))
+(describe "ZonedDateTime instant comparisons" (it-needs-zoneinfo "orders equal, earlier, and later instants for inclusive comparisons" (let* ((utc (find-time-zone "UTC")) (new-york (find-time-zone "America/New_York")) (value (zoned-date-time-of-local (local-date-time-of 2024 6 15 12 0 0) utc)) (same-instant (zoned-date-time-of-instant (zoned-date-time-to-instant value) new-york)) (before (zoned-date-time-minus-seconds value 1)) (after (zoned-date-time-plus-seconds value 1))) (expect (zoned-date-time<= value same-instant) :to-be-truthy) (expect (zoned-date-time<= value after) :to-be-truthy) (expect (zoned-date-time<= value before) :to-be-falsy) (expect (zoned-date-time>= value same-instant) :to-be-truthy) (expect (zoned-date-time>= value before) :to-be-truthy) (expect (zoned-date-time>= value after) :to-be-falsy))))
 
 (describe
   "NOW constructor defaults"
@@ -198,7 +198,7 @@
 
 (describe
   "ZonedDateTime rounding mode default"
-  (it
+  (it-needs-zoneinfo
     "ZONED-DATE-TIME-ROUNDED-TO defaults to :HALF-EVEN, not :HALF-UP"
     (let* ((zone (find-time-zone "UTC"))
            (value (zoned-date-time-of-local (local-date-time-of 2024 6 1 12 30 0) zone)))

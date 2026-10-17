@@ -171,7 +171,7 @@
 
 (describe
   "ZonedDateTime"
-  (it
+  (it-needs-zoneinfo
     "formats and parses a bracketed zone id"
     (let* ((z
           (zoned-date-time-of-local
