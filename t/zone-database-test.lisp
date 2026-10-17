@@ -1,8 +1,9 @@
 (in-package #:cl-date-kit/test)
+(eval-when (:compile-toplevel :load-toplevel :execute) (require :sb-posix))
 
 (describe
   "AVAILABLE-TIME-ZONE-NAMES"
-  (it
+  (it-needs-zoneinfo
     "returns sorted, non-empty, duplicate-free names"
     (let ((names (cl-date-kit:available-time-zone-names)))
       (expect names :to-be-truthy)
@@ -17,12 +18,10 @@
         (length names)
         :to-be
         (length (remove-duplicates names :test (function string=))))))
-  (it-each
-      (("UTC") ("Asia/Tokyo") ("America/New_York"))
-      "resolves the representative time zone name ~S"
-      (name)
-    (expect (time-zone-p (find-time-zone name)) :to-be-truthy))
-  (it
+  (it-needs-zoneinfo "resolves UTC" (expect (time-zone-p (find-time-zone "UTC")) :to-be-truthy))
+  (it-needs-zoneinfo "resolves Asia/Tokyo" (expect (time-zone-p (find-time-zone "Asia/Tokyo")) :to-be-truthy))
+  (it-needs-zoneinfo "resolves America/New_York" (expect (time-zone-p (find-time-zone "America/New_York")) :to-be-truthy))
+  (it-needs-zoneinfo
     "returns a fresh list after a cached lookup"
     (let* ((first-result (cl-date-kit:available-time-zone-names))
            (first-name (car first-result))
@@ -31,8 +30,9 @@
       (expect (eq first-result second-result) :to-be-falsy)
       (expect (car second-result) :to-equal first-name)))
   (it-run-if
-      (let ((tzdir (sb-ext:posix-getenv "TZDIR")))
-        (and tzdir (plusp (length tzdir))))
+      (let* ((tzdir (sb-ext:posix-getenv "TZDIR"))
+              (root (and tzdir (cl-date-kit::%zoneinfo-root-pathname tzdir))))
+         (and root (probe-file (merge-pathnames "UTC" root))))
       "uses the TZDIR environment root when one is configured"
     (expect
       (cl-date-kit:available-time-zone-names :tzdir (sb-ext:posix-getenv "TZDIR"))
@@ -62,7 +62,26 @@
       :if-exists
       :supersede)
     (write-string content stream)))
-
+(defun %write-temporary-tzdir-octets (directory name octets)
+  (let ((path (merge-pathnames name directory)))
+    (with-open-file
+        (stream path
+                :direction :output
+                :if-exists :supersede
+                :element-type (quote (unsigned-byte 8)))
+      (write-sequence octets stream))
+    path))
+(defun %call-with-tzdir-environment (tzdir function)
+  (let ((original (sb-ext:posix-getenv "TZDIR")))
+    (unwind-protect
+         (progn
+           (if tzdir
+               (sb-posix:setenv "TZDIR" (namestring tzdir) 1)
+               (sb-posix:unsetenv "TZDIR"))
+           (funcall function))
+      (if original
+          (sb-posix:setenv "TZDIR" original 1)
+          (sb-posix:unsetenv "TZDIR")))))
 (describe
   "%READ-BOUNDED-LINE"
   (it
@@ -127,7 +146,49 @@
           (handler-case (find-time-zone "../etc/passwd")
             (time-zone-not-found (signaled) signaled))))
       (expect (typep condition 'time-zone-not-found) :to-be-truthy)
-      (expect (time-zone-not-found-name condition) :to-equal "../etc/passwd"))))
+      (expect (time-zone-not-found-name condition) :to-equal "../etc/passwd")))
+  (it
+  "reports the on-disk pathname for malformed TZif data found by name"
+  (%call-with-temporary-tzdir
+    (lambda (tzdir)
+      (let ((path
+              (%write-temporary-tzdir-octets
+                tzdir
+                "MalformedZone"
+                (vector 84 90 105 102))))
+        (unwind-protect
+             (let ((condition
+                     (handler-case
+                         (%call-with-tzdir-environment
+                           tzdir
+                           (lambda () (find-time-zone "MalformedZone")))
+                       (malformed-tzif (signaled) signaled))))
+               (expect (typep condition (quote malformed-tzif)) :to-be-truthy)
+               (expect
+                 (namestring (malformed-tzif-path condition))
+                 :to-equal
+                 (namestring (truename path))))
+          (ignore-errors (delete-file path))))))))
+(describe
+  "FIND-TIME-ZONE TZDIR fallback"
+  (it-run-if
+    (probe-file #P"/usr/share/zoneinfo/UTC")
+    "uses the default zoneinfo root when TZDIR is unset"
+    (%call-with-tzdir-environment
+      nil
+      (lambda ()
+        (expect (time-zone-name (find-time-zone "UTC")) :to-equal "UTC"))))
+  (it-run-if
+    (probe-file #P"/usr/share/zoneinfo/UTC")
+    "falls back to the default zoneinfo root when TZDIR does not exist"
+    (%call-with-temporary-tzdir
+      (lambda (directory)
+        (let ((missing (merge-pathnames #P"missing/" directory)))
+          (expect (probe-file missing) :to-be nil)
+          (%call-with-tzdir-environment
+            missing
+            (lambda ()
+              (expect (time-zone-name (find-time-zone "UTC")) :to-equal "UTC"))))))))
 
 (describe
   "%ZONEINFO-ROOT-NAMESTRING"
@@ -136,3 +197,32 @@
       "returns NIL for a root that is neither a string nor a pathname (~S)"
       (root)
     (expect (cl-date-kit::%zoneinfo-root-namestring root) :to-be nil)))
+(describe
+  "%FIND-TIME-ZONE-IN-ROOTS"
+  (it
+    "signals ZONEINFO-DIRECTORY-NOT-FOUND when no root directory exists"
+    (%call-with-temporary-tzdir
+      (lambda (directory)
+        (let* ((name "Asia/Tokyo")
+               (missing-root
+                 (namestring (merge-pathnames #P"missing/" directory)))
+               (condition
+                 (handler-case
+                     (cl-date-kit::%find-time-zone-in-roots name (list missing-root))
+                   (zoneinfo-directory-not-found (signaled) signaled))))
+          (expect (typep condition 'zoneinfo-directory-not-found) :to-be-truthy)
+          (expect (typep condition 'time-zone-not-found) :to-be-truthy)
+          (expect (time-zone-not-found-name condition) :to-equal name)))))
+  (it
+    "signals TIME-ZONE-NOT-FOUND when a valid root lacks the zone name"
+    (%call-with-temporary-tzdir
+      (lambda (directory)
+        (let* ((name "Nonexistent/Zone_ABC")
+               (condition
+                 (handler-case
+                     (cl-date-kit::%find-time-zone-in-roots name (list (namestring directory)))
+                   (zoneinfo-directory-not-found (signaled) signaled)
+                   (time-zone-not-found (signaled) signaled))))
+          (expect (typep condition 'time-zone-not-found) :to-be-truthy)
+          (expect (typep condition 'zoneinfo-directory-not-found) :to-be-falsy)
+          (expect (time-zone-not-found-name condition) :to-equal name))))))

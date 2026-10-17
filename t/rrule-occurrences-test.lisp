@@ -2,7 +2,7 @@
 
 (describe
   "RFC 5545 RRULE expansion"
-  (it
+  (it-needs-zoneinfo
     "expands each frequency from DTSTART and honors COUNT"
     (dolist (spec
         '(("FREQ=SECONDLY;COUNT=3"
@@ -49,7 +49,7 @@
               3))
           :to-equal
           expected))))
-  (it
+  (it-needs-zoneinfo
     "applies time and calendar BY* parts, including negative ordinals"
     (expect
       (rrule-test-local-strings
@@ -169,7 +169,7 @@
             1))
         :to-equal
         (quote ("2024-01-02T09:00:00" "2024-02-02T09:00:00" "2024-03-02T09:00:00")))))
-  (it
+  (it-needs-zoneinfo
     "filters SECONDLY candidates by BYMINUTE and BYSECOND, rather than expanding them"
     (expect
       (rrule-test-local-strings
@@ -188,7 +188,7 @@
       :to-equal
       '("2024-01-01T00:00:03" "2024-01-01T00:00:07")))
   (progn
-    (it
+    (it-needs-zoneinfo
       "evaluates ordinal BYDAY across yearly and monthly scopes"
       (expect
         (rrule-test-local-strings
@@ -213,7 +213,7 @@
           12)
         :to-equal
         nil))
-    (it
+    (it-needs-zoneinfo
       "applies BYSETPOS after filtering, deduplicating, and sorting"
       (expect
         (rrule-test-local-strings
@@ -322,7 +322,7 @@
             1))
         :to-equal
         '("2024-01-01T10:00:00"))))
-  (it
+  (it-needs-zoneinfo
     "uses WKST to choose two-week periods"
     (expect
       (rrule-test-local-strings
@@ -353,7 +353,7 @@
 
 (describe
   "RRULE COUNT-only period limits"
-  (it
+  (it-needs-zoneinfo
     "requires a bound when filters make COUNT-only schedules unsatisfiable"
     (dolist (schedule
         (list
@@ -373,7 +373,7 @@
 
 (describe
   "RRULE BYWEEKNO week-year boundaries"
-  (it
+  (it-needs-zoneinfo
     "keeps boundary weeks in their RFC week-year"
     (expect
       (rrule-test-local-strings
@@ -406,7 +406,7 @@
 
 (describe
   "RRULE time filters"
-  (it
+  (it-needs-zoneinfo
     "filters hourly periods by BYHOUR before expanding candidates"
     (expect
       (rrule-test-local-strings

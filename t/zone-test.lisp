@@ -112,3 +112,66 @@
       (expect (zone-offset<= west west) :to-be-truthy)
       (expect (zone-offset> east west) :to-be-truthy)
       (expect (zone-offset>= east east) :to-be-truthy))))
+(defun %make-tzif-v2-fixture-octets ()
+  (let* ((header
+           (make-array
+             44
+             :element-type (quote (unsigned-byte 8))
+             :initial-element 0))
+         (block #(255 255 185 176 0 0 69 83 84 0))
+         (footer
+           (map
+             (quote (vector (unsigned-byte 8)))
+             (function char-code)
+             (format nil "~%EST5EDT,M3.2.0/2,M11.1.0/2~%"))))
+    (replace header #(84 90 105 102))
+    (setf (aref header 4) 50
+          (aref header 39) 1
+          (aref header 43) 4)
+    (concatenate (quote (vector (unsigned-byte 8)))
+                 header block header block footer)))
+(describe
+  "TIME-ZONE-FROM-TZIF-OCTETS"
+  (it
+  "loads a known zone offset and POSIX footer from fixture TZif octets"
+  (let* ((name "Synthetic/Eastern")
+         (zone (time-zone-from-tzif-octets name (%make-tzif-v2-fixture-octets)))
+         (july-2100
+           (make-instant
+             (local-date-time-to-epoch-second
+               (local-date-time-of 2100 7 1 0 0 0)
+               (zone-offset-utc)))))
+    (expect (time-zone-name zone) :to-equal name)
+    (expect
+      (zone-offset-total-seconds (offset-for-instant zone (make-instant 0)))
+      :to-be
+      -18000)
+    (expect
+      (zone-offset-total-seconds (offset-for-instant zone july-2100))
+      :to-be
+      -14400)))
+  (it
+    "signals MALFORMED-TZIF for octets without a TZif header"
+    (let ((octets
+            (make-array 44
+              :element-type '(unsigned-byte 8)
+              :initial-element 0)))
+      (signals
+        malformed-tzif
+        (time-zone-from-tzif-octets "Synthetic/Invalid" octets))))
+  (it
+  "signals MALFORMED-TZIF for an octet vector above the supported maximum"
+  (let ((condition
+          (handler-case
+              (time-zone-from-tzif-octets
+                "Synthetic/Oversized"
+                (make-array
+                  (1+ cl-date-kit::+maximum-tzif-file-size+)
+                  :element-type (quote (unsigned-byte 8))
+                  :initial-element 0))
+            (malformed-tzif (signaled) signaled))))
+    (expect (typep condition (quote malformed-tzif)) :to-be-truthy)
+    (expect
+      (malformed-tzif-reason condition)
+      :to-equal
+      "TZif file exceeds the maximum supported size"))))

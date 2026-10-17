@@ -398,8 +398,13 @@ in `tzdata.zi`, discarding suffixes such as `-rearguard`. An explicit `:TZDIR`
 examines only that root, otherwise it uses `$TZDIR` then
 `/usr/share/zoneinfo`. It returns `NIL` when the metadata cannot be read or
 is not in that form.
-`FIND-TIME-ZONE` -- looks up an IANA zone by name (signals
-`TIME-ZONE-NOT-FOUND`). `TIME-ZONE-NAME` -- accessor.
+`FIND-TIME-ZONE` -- looks up an IANA zone by name from `$TZDIR` and then
+`/usr/share/zoneinfo`. It signals `TIME-ZONE-NOT-FOUND` when the name is
+unknown, or `ZONEINFO-DIRECTORY-NOT-FOUND` when neither search root exists.
+The latter is a subtype of `TIME-ZONE-NOT-FOUND` for compatibility with
+existing handlers. `TIME-ZONE-FROM-TZIF-OCTETS (NAME OCTETS)` constructs a
+named zone from a vector of `(UNSIGNED-BYTE 8)` values. It parses the same
+TZif v2/v3 POSIX footer as file-based lookup. `TIME-ZONE-NAME` -- accessor.
 `ZONE-STATE-FOR-INSTANT` returns an opaque state for an `INSTANT` in either a
 fixed `ZONE-OFFSET` or IANA `TIME-ZONE`. Its `ZONE-STATE-OFFSET`,
 `ZONE-STATE-ABBREVIATION`, and `ZONE-STATE-DAYLIGHT-SAVING-P` accessors report

@@ -6,9 +6,10 @@
 
 A dependency-free, SBCL-only date and time library with calendar and clock
 types, daylight-saving gap and overlap handling, and a reader for the IANA
-time zone database's on-disk TZif format (RFC 8536). Time zone data is read from
-the `TZDIR` environment variable or `/usr/share/zoneinfo` at runtime rather
-than bundled, so the library adds no ASDF dependency.
+time zone database's TZif format (RFC 8536). Named zones can be loaded from
+`TZDIR` or `/usr/share/zoneinfo`, or built from caller-supplied bytes with
+`TIME-ZONE-FROM-TZIF-OCTETS`. The library does not bundle zone data, so it adds
+no ASDF dependency.
 
 Named-zone local-time resolution binary-searches the TZif transition table and
 examines only boundaries that can affect the requested wall-clock value under
@@ -51,7 +52,7 @@ for `PARSE-RRULE`, `MAKE-RRULE-SCHEDULE`, `MAKE-RRULE-SET`, and the streaming
 ```nix
 # flake.nix
 inputs.cl-date-kit = {
-  url = "github:nerima-lisp/cl-date-kit/v1.1.0";
+  url = "github:nerima-lisp/cl-date-kit/v1.1.1";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 ```

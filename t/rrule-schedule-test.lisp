@@ -37,7 +37,7 @@
 
 (describe
   "RRULE evaluation boundaries"
-  (it
+  (it-needs-zoneinfo
     "skips DST gaps without consuming COUNT"
     (let* ((zone (find-time-zone "America/New_York"))
            (schedule
@@ -48,7 +48,7 @@
         (rrule-test-local-strings (rrule-occurrences schedule :max-periods 4))
         :to-equal
         (list "2024-03-09T02:30:00" "2024-03-11T02:30:00" "2024-03-12T02:30:00"))))
-  (it
+  (it-needs-zoneinfo
     "uses the earlier offset for DST overlaps"
     (let* ((zone (find-time-zone "America/New_York"))
            (schedule
@@ -60,13 +60,13 @@
         (zone-offset-total-seconds (zoned-date-time-offset occurrence))
         :to-be
         -14400)))
-  (it
+  (it-needs-zoneinfo
     "requires a period limit for unbounded schedules"
     (let ((schedule
           (rrule-test-utc-schedule 2024 1 1 "FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30")))
       (signals invalid-rrule (rrule-occurrences schedule))
       (expect (rrule-occurrences schedule :max-periods 3) :to-equal nil)))
-  (it
+  (it-needs-zoneinfo
     "applies the period limit before candidate emission"
     (let ((schedule (rrule-test-utc-schedule 2024 1 1 "FREQ=DAILY"))
           (occurrences nil))
@@ -79,7 +79,7 @@
         2)
       (expect (length occurrences) :to-be 2)))
   (progn
-    (it
+    (it-needs-zoneinfo
       "honors callback cancellation before the period bound"
       (let ((schedule (rrule-test-utc-schedule 2024 1 1 "FREQ=DAILY"))
             (occurrences nil))
@@ -91,7 +91,7 @@
           :max-periods
           3)
         (expect (length occurrences) :to-be 1)))
-    (it
+    (it-needs-zoneinfo
       "supports DO iteration completion and non-local early return"
       (let ((schedule (rrule-test-utc-schedule 2024 1 1 "FREQ=DAILY;COUNT=2")))
         (let (occurrences)
@@ -117,7 +117,7 @@
             (rrule-test-local-strings occurrences)
             :to-equal
             (quote ("2024-01-01T09:00:00"))))))
-    (it
+    (it-needs-zoneinfo
       "passes MAX-PERIODS to unbounded schedules"
       (let ((schedule (rrule-test-utc-schedule 2024 1 1 "FREQ=DAILY")))
         (let (occurrences)
@@ -139,7 +139,7 @@
       "rejects malformed numeric RRULE values"
       (signals invalid-rrule (parse-rrule "FREQ=DAILY;COUNT=1-2"))
       (signals invalid-rrule (parse-rrule "FREQ=MONTHLY;BYMONTHDAY=1-2")))
-    (it
+    (it-needs-zoneinfo
       "skips invalid default DATE-TIME monthly and yearly dates"
       (expect
         (rrule-test-local-strings

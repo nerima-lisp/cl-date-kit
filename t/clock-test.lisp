@@ -7,7 +7,7 @@
     (let ((clock (make-fixed-clock (make-instant 42 7))))
       (expect (instant= (clock-now clock) (make-instant 42 7)) :to-be-truthy)
       (expect (instant= (clock-now clock) (make-instant 42 7)) :to-be-truthy)))
-  (it
+  (it-needs-zoneinfo
     "ZONED-DATE-TIME-NOW and derived APIs use the supplied non-UTC zone and fixed clock"
     (let* ((clock (make-fixed-clock (make-instant 0 42)))
            (zone (find-time-zone "Asia/Tokyo"))

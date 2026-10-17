@@ -461,6 +461,7 @@
    #:time-zone-p
    #:time-zone-name
    #:find-time-zone
+   #:time-zone-from-tzif-octets
    #:available-time-zone-names
    #:time-zone-database-version
    #:offset-for-instant
@@ -760,6 +761,7 @@
    #:invalid-date-time-profile
    #:invalid-date-time-profile-value
    #:time-zone-not-found
+   #:zoneinfo-directory-not-found
    #:time-zone-not-found-name
    #:malformed-tzif
    #:malformed-tzif-path

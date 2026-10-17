@@ -72,7 +72,7 @@
             :clock (make-fixed-clock (make-instant 0 123456789)))
           (make-local-time 9 0 0 123456789))
         :to-be-truthy))
-    (it
+    (it-needs-zoneinfo
       "LOCAL-TIME-NOW observes IANA daylight-saving offsets"
       (let ((zone (find-time-zone "America/New_York")))
         (expect

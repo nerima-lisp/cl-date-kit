@@ -2,7 +2,7 @@
 
 (describe
   "RFC 5545 recurrence sets"
-  (it
+  (it-needs-zoneinfo
     "merges schedules and RDATEs, removes EXDATEs, and deduplicates instants"
     (let* ((utc (find-time-zone "UTC"))
            (new-york (find-time-zone "America/New_York"))
@@ -22,7 +22,7 @@
         (rrule-test-local-strings (rrule-set-occurrences set :max-periods 3))
         :to-equal
         (quote ("2024-01-01T09:00:00" "2024-01-03T09:00:00" "2024-01-04T09:00:00")))))
-  (it
+  (it-needs-zoneinfo
     "preserves the unbounded schedule limit and iteration early exit"
     (let ((set
           (make-rrule-set
@@ -45,7 +45,7 @@
           (nreverse seen))
         :to-equal
         (quote ("2024-01-01T09:00:00")))))
-  (it
+  (it-needs-zoneinfo
     "keeps a stateful schedule source for early exit and complete iteration"
     (let* ((set
           (make-rrule-set
@@ -118,7 +118,7 @@
           :stopped)
         (expect seen :to-equal (quote ("2024-01-01"))))))
   (progn
-    (it
+    (it-needs-zoneinfo
       "does not create an RDATE source when no RDATEs are supplied"
       (let* ((set
             (make-rrule-set
@@ -195,7 +195,7 @@
           (mapcar #'format-local-date (rrule-set-occurrences set))
           :to-equal
           (list "2024-01-01" "2024-01-03"))))
-    (it
+    (it-needs-zoneinfo
       "rejects mixed DATE and ZONED-DATE-TIME values"
       (let* ((date (make-local-date 2024 1 1))
              (zoned
@@ -233,7 +233,7 @@
           (mapcar #'format-local-date-time (rrule-set-occurrences set :max-periods 2))
           :to-equal
           (list "2024-01-01T09:00:00" "2024-01-03T09:00:00"))))
-    (it
+    (it-needs-zoneinfo
       "rejects floating values mixed with DATE or ZONED-DATE-TIME"
       (let* ((floating (rrule-test-local 2024 1 1 9))
              (date (make-local-date 2024 1 1))
@@ -248,7 +248,7 @@
 
 (describe
   "RRULE set EXDATE membership indexes"
-  (it
+  (it-needs-zoneinfo
     "excludes a nontrivial zoned EXDATE collection by instant and preserves deduplication"
     (let* ((utc (find-time-zone "UTC"))
            (new-york (find-time-zone "America/New_York"))

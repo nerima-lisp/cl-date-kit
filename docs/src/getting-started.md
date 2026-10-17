@@ -7,7 +7,7 @@
 ```nix
 # flake.nix
 inputs.cl-date-kit = {
-  url = "github:nerima-lisp/cl-date-kit/v1.0.0";
+  url = "github:nerima-lisp/cl-date-kit/v1.1.1";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 ```
@@ -28,10 +28,11 @@ before loading the system:
 Alternatively, configure `CL_SOURCE_REGISTRY` to find the checkout.
 
 `cl-date-kit` has no ASDF dependencies (`:depends-on ()`); the only runtime
-requirement beyond SBCL is a readable IANA time zone database, which is
-already present on essentially every Linux and macOS install at
-`/usr/share/zoneinfo`. See [Compatibility](reference/compatibility.md) for how
-that lookup works and what `TZDIR` overrides.
+requirement beyond SBCL is either a readable IANA time zone database, which is
+already present on many Linux and macOS installs at `/usr/share/zoneinfo`, or
+TZif bytes supplied directly to `TIME-ZONE-FROM-TZIF-OCTETS`. See
+[Compatibility](reference/compatibility.md) for how file lookup works and
+what `TZDIR` overrides.
 
 ## Naive calendar values
 

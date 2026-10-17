@@ -238,32 +238,45 @@ An empty footer denotes that no future rule is supplied."
         (let ((buffer (make-array file-size :element-type '(unsigned-byte 8))))
           (read-sequence buffer stream)
           buffer))))
+  (defun parse-tzif-octets (bytes path)
+    "Parses TZif OCTETS at PATH (RFC 8536, versions 1-3) into TZIF-DATA."
+    (check-type bytes (vector (unsigned-byte 8)))
+    (when (> (length bytes) +maximum-tzif-file-size+)
+      (error
+        'malformed-tzif
+        :path
+        path
+        :reason
+        "TZif file exceeds the maximum supported size"))
+    (let* ((v1-header (%parse-tzif-header bytes 0 path)))
+      (multiple-value-bind (v1-times v1-types v1-initial v1-abbreviations v1-end)
+          (%parse-tzif-block bytes 44 v1-header 4 path)
+        (if (zerop (%tzif-header-version v1-header))
+            (make-tzif-data
+              :transition-times
+              v1-times
+              :transition-types
+              v1-types
+              :initial-type
+              v1-initial
+              :abbreviation-table
+              v1-abbreviations
+              :posix-tz-string
+              nil)
+            (let ((v2-header (%parse-tzif-header bytes v1-end path)))
+              (multiple-value-bind (v2-times v2-types v2-initial v2-abbreviations v2-end)
+                  (%parse-tzif-block bytes (+ v1-end 44) v2-header 8 path)
+                (make-tzif-data
+                  :transition-times
+                  v2-times
+                  :transition-types
+                  v2-types
+                  :initial-type
+                  v2-initial
+                  :abbreviation-table
+                  v2-abbreviations
+                  :posix-tz-string
+                  (%parse-posix-tz-string bytes v2-end path))))))))
   (defun parse-tzif-file (path)
-    "Parses the TZif file at PATH (RFC 8536, versions 1-3) into a TZIF-DATA."
-    (let* ((bytes (%read-file-bytes path))
-           (v1-header (%parse-tzif-header bytes 0 path)))
-      (multiple-value-bind (v1-times v1-types v1-initial v1-abbreviations v1-end) (%parse-tzif-block bytes 44 v1-header 4 path)
-        (if (zerop (%tzif-header-version v1-header)) (make-tzif-data
-            :transition-times
-            v1-times
-            :transition-types
-            v1-types
-            :initial-type
-            v1-initial
-            :abbreviation-table
-            v1-abbreviations
-            :posix-tz-string
-            nil)
-          (let ((v2-header (%parse-tzif-header bytes v1-end path)))
-            (multiple-value-bind (v2-times v2-types v2-initial v2-abbreviations v2-end) (%parse-tzif-block bytes (+ v1-end 44) v2-header 8 path)
-              (make-tzif-data
-                :transition-times
-                v2-times
-                :transition-types
-                v2-types
-                :initial-type
-                v2-initial
-                :abbreviation-table
-                v2-abbreviations
-                :posix-tz-string
-                (%parse-posix-tz-string bytes v2-end path)))))))))
+    "Reads and parses the TZif file at PATH."
+    (parse-tzif-octets (%read-file-bytes path) path)))

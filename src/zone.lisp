@@ -177,32 +177,48 @@ TZDIR environment variable and the standard zoneinfo directory are searched."
       (time-zone (%time-zone-offset-for-instant zone (instant-epoch-second instant))))))
 
 (progn
+  (defun %time-zone-from-tzif-octets (name octets path)
+    (let* ((data (parse-tzif-octets octets path))
+           (posix-tz-string (tzif-data-posix-tz-string data))
+           (rule
+            (and posix-tz-string
+                 (parse-posix-tz-string posix-tz-string path))))
+      (%make-time-zone (copy-seq name) data rule)))
+  (defun time-zone-from-tzif-octets (name octets)
+    "Builds the time zone NAME from a TZif vector of octets."
+    (check-type name string)
+    (%time-zone-from-tzif-octets name octets name))
   (defvar *time-zone-cache* (make-hash-table :test (function equal)))
   (defvar *time-zone-cache-lock* (sb-thread:make-mutex :name "cl-date-kit time-zone cache"))
   (defun %time-zone-cache-key (name path)
     (list (copy-seq name) (namestring path)))
-  (defun find-time-zone (name)
-    "Looks up the IANA time zone NAME (e.g. \"Asia/Tokyo\") under the TZDIR
-environment variable, then /usr/share/zoneinfo, parsing its TZif file."
+  (defun %find-time-zone-in-roots (name roots)
     (unless (%safe-time-zone-name-p name)
       (error (quote time-zone-not-found) :name name))
-    (let ((path (find-if (function probe-file) (%candidate-zoneinfo-paths name))))
+    (unless (some (function %zoneinfo-root-pathname) roots)
+      (error (quote zoneinfo-directory-not-found) :name name))
+    (let ((path
+            (find-if
+              (function probe-file)
+              (loop for root in roots
+                    for directory = (%zoneinfo-root-pathname root)
+                    when directory
+                      collect (merge-pathnames name directory)))))
       (unless path
         (error (quote time-zone-not-found) :name name))
       (let ((key (%time-zone-cache-key name path)))
         (or
           (sb-thread:with-mutex (*time-zone-cache-lock*) (gethash key *time-zone-cache*))
-          (let* ((data (parse-tzif-file path))
-                 (rule
-                (and
-                  (tzif-data-posix-tz-string data)
-                  (parse-posix-tz-string (tzif-data-posix-tz-string data) path)))
-                 (candidate (%make-time-zone name data rule)))
+          (let ((candidate
+                  (%time-zone-from-tzif-octets name (%read-file-bytes path) path)))
             (sb-thread:with-mutex
               (*time-zone-cache-lock*)
               (or
                 (gethash key *time-zone-cache*)
-                (setf (gethash key *time-zone-cache*) candidate)))))))))
+                (setf (gethash key *time-zone-cache*) candidate))))))))
+  (defun find-time-zone (name)
+    "Looks up the IANA time zone NAME under TZDIR or /usr/share/zoneinfo."
+    (%find-time-zone-in-roots name (%candidate-zoneinfo-roots nil))))
 
 (progn
   (defun %zone-transition-from-values (epoch-second before after)

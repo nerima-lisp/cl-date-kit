@@ -83,7 +83,7 @@
         (expect (invalid-rrule-reason condition) :to-equal "duplicate RRULE clause")
         (expect (invalid-rrule-value condition) :to-equal "COUNT")))
     (progn
-      (it
+      (it-needs-zoneinfo
         "parses UNTIL as an instant for UTC schedules and a local date-time otherwise"
         (let ((utc-rule (parse-rrule "FREQ=DAILY;UNTIL=20240131T090000Z"))
               (local-rule (parse-rrule "FREQ=DAILY;UNTIL=20240131T090000")))
@@ -125,7 +125,7 @@
         (let ((rule (make-rrule :frequency :daily)))
           (expect (rrule-interval rule) :to-be 1)
           (expect (rrule-week-start rule) :to-be :mo)))
-      (it
+      (it-needs-zoneinfo
         "accepts UNTIL forms compatible with UTC-offset and local DTSTART values"
         (expect
           (rrule-schedule-p
