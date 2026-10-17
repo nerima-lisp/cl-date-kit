@@ -14,7 +14,8 @@ formats without naming each specific condition.
 | `INVALID-YEAR` | `MAKE-YEAR` | The proleptic-Gregorian year is not an integer. |
 | `INVALID-TIME` | `MAKE-LOCAL-TIME` | Hour, minute, second, or nanosecond is out of range. Leap seconds are not modeled. |
 | `DATE-TIME-PARSE-ERROR` | Every `PARSE-*` function | The input string does not match the expected ISO-8601/RFC-3339 grammar. |
-| `TIME-ZONE-NOT-FOUND` | `FIND-TIME-ZONE` | No TZif file for that IANA name under `TZDIR` or `/usr/share/zoneinfo` -- including when the name is rejected outright for containing `..` or starting with `/`, which would otherwise let a caller read arbitrary files off disk. |
+| `TIME-ZONE-NOT-FOUND` | `FIND-TIME-ZONE` | The requested IANA name has no TZif file under the available search roots, or the name is rejected for containing `..` or starting with `/`. |
+| `ZONEINFO-DIRECTORY-NOT-FOUND` | `FIND-TIME-ZONE` | Neither `TZDIR` nor `/usr/share/zoneinfo` names an available zoneinfo directory. This condition is a subtype of `TIME-ZONE-NOT-FOUND`, so existing handlers for the parent condition continue to catch it. |
 | `MALFORMED-TZIF` | The TZif parser | A file exists at the expected path but its header or data blocks are not RFC 8536-shaped. |
 | `NONEXISTENT-LOCAL-TIME` | `RESOLVE-LOCAL-DATE-TIME` with `:DISAMBIGUATION :STRICT` | The local date-time falls in a spring-forward gap: the wall clock jumped past it. |
 | `AMBIGUOUS-LOCAL-TIME` | `RESOLVE-LOCAL-DATE-TIME` with `:DISAMBIGUATION :STRICT` | The local date-time falls in a fall-back overlap: the wall clock repeated it under two different offsets. |

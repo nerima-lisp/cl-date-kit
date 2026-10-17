@@ -112,3 +112,39 @@
       (expect (zone-offset<= west west) :to-be-truthy)
       (expect (zone-offset> east west) :to-be-truthy)
       (expect (zone-offset>= east east) :to-be-truthy))))
+(describe
+  "TIME-ZONE-FROM-TZIF-OCTETS"
+  (it
+    "loads a known zone offset and POSIX footer from TZif octets"
+    (let* ((name "America/New_York")
+       (path
+         (find-if
+           (function probe-file)
+           (cl-date-kit::%candidate-zoneinfo-paths name)))
+       (zone
+         (time-zone-from-tzif-octets
+           name
+           (cl-date-kit::%read-file-bytes path)))
+       (july-2100
+         (make-instant
+           (local-date-time-to-epoch-second
+             (local-date-time-of 2100 7 1 0 0 0)
+             (zone-offset-utc)))))
+  (expect (time-zone-name zone) :to-equal name)
+  (expect
+    (zone-offset-total-seconds (offset-for-instant zone (make-instant 0)))
+    :to-be
+    -18000)
+  (expect
+    (zone-offset-total-seconds (offset-for-instant zone july-2100))
+    :to-be
+    -14400)))
+  (it
+    "signals MALFORMED-TZIF for octets without a TZif header"
+    (let ((octets
+            (make-array 44
+              :element-type '(unsigned-byte 8)
+              :initial-element 0)))
+      (signals
+        malformed-tzif
+        (time-zone-from-tzif-octets "Synthetic/Invalid" octets)))))

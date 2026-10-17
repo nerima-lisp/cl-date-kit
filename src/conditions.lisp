@@ -60,6 +60,15 @@ than NIL or :RFC3339.")
   "Signaled by FIND-TIME-ZONE when no TZif file for the
 requested IANA name (e.g. \"Asia/Tokyo\") exists under the TZDIR environment
 variable or the default /usr/share/zoneinfo search path.")
+(define-condition zoneinfo-directory-not-found (time-zone-not-found)
+  ()
+  (:report
+    (lambda (condition stream)
+      (format stream
+        "No zoneinfo directory is available while looking up ~S."
+        (time-zone-not-found-name condition))))
+  (:documentation
+    "Signaled by FIND-TIME-ZONE when neither TZDIR nor the default zoneinfo path names an existing directory."))
 
 (define-date-kit-condition malformed-tzif (path reason)
   "~A is not a valid TZif file: ~A."

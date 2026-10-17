@@ -4,6 +4,10 @@
 
 `FIND-TIME-ZONE` reads the compiled IANA time zone database (TZif, RFC
 8536) from disk: first `$TZDIR/<name>`, then `/usr/share/zoneinfo/<name>`.
+`TIME-ZONE-FROM-TZIF-OCTETS` also constructs a named zone from a
+`(UNSIGNED-BYTE 8)` vector, including any POSIX-TZ footer in the bytes.
+`FIND-TIME-ZONE` signals `ZONEINFO-DIRECTORY-NOT-FOUND` only when neither
+search root exists; this condition inherits from `TIME-ZONE-NOT-FOUND`.
 `TIME-ZONE-DATABASE-VERSION` reads an explicit `:TZDIR` root only; otherwise
 it reads `$TZDIR` and then `/usr/share/zoneinfo`. It reads each root's
 `+VERSION` first and accepts it only when it is exactly a `YYYYx` IANA release.

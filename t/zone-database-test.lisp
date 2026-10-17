@@ -136,3 +136,32 @@
       "returns NIL for a root that is neither a string nor a pathname (~S)"
       (root)
     (expect (cl-date-kit::%zoneinfo-root-namestring root) :to-be nil)))
+(describe
+  "%FIND-TIME-ZONE-IN-ROOTS"
+  (it
+    "signals ZONEINFO-DIRECTORY-NOT-FOUND when no root directory exists"
+    (%call-with-temporary-tzdir
+      (lambda (directory)
+        (let* ((name "Asia/Tokyo")
+               (missing-root
+                 (namestring (merge-pathnames #P"missing/" directory)))
+               (condition
+                 (handler-case
+                     (cl-date-kit::%find-time-zone-in-roots name (list missing-root))
+                   (zoneinfo-directory-not-found (signaled) signaled))))
+          (expect (typep condition 'zoneinfo-directory-not-found) :to-be-truthy)
+          (expect (typep condition 'time-zone-not-found) :to-be-truthy)
+          (expect (time-zone-not-found-name condition) :to-equal name)))))
+  (it
+    "signals TIME-ZONE-NOT-FOUND when a valid root lacks the zone name"
+    (%call-with-temporary-tzdir
+      (lambda (directory)
+        (let* ((name "Nonexistent/Zone_ABC")
+               (condition
+                 (handler-case
+                     (cl-date-kit::%find-time-zone-in-roots name (list (namestring directory)))
+                   (zoneinfo-directory-not-found (signaled) signaled)
+                   (time-zone-not-found (signaled) signaled))))
+          (expect (typep condition 'time-zone-not-found) :to-be-truthy)
+          (expect (typep condition 'zoneinfo-directory-not-found) :to-be-falsy)
+          (expect (time-zone-not-found-name condition) :to-equal name))))))

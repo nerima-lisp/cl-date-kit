@@ -3,6 +3,16 @@
 All notable changes to cl-date-kit are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0]
+
+### Added
+
+- `TIME-ZONE-FROM-TZIF-OCTETS` constructs a named time zone from TZif octets,
+  including the POSIX-TZ footer rules used by file-based lookup.
+- `ZONEINFO-DIRECTORY-NOT-FOUND` distinguishes an unavailable zoneinfo tree
+  from an unknown zone name while remaining a subtype of
+  `TIME-ZONE-NOT-FOUND`.
+
 ## [1.0.0]
 
 First stable release. The public API (every exported symbol's name, signature, and
